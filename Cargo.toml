@@ -11,8 +11,8 @@ license = "MIT"
 
 [dependencies]
 ieee754 = "0.2"
-revord = "0.0"
-ordered-float = "0.0"
+revord = "0.0.2"
+ordered-float = "0.0.2"
 num = "0.1"
 
 [dev-dependencies]
