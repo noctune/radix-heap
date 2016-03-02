@@ -43,6 +43,7 @@ use std::iter::FromIterator;
 use std::cmp::max;
 use std::mem::swap;
 use std::default::Default;
+use std::num::Wrapping;
 use revord::RevOrd;
 use ieee754::Ieee754;
 use ordered_float::NotNaN;
@@ -250,15 +251,22 @@ pub trait Radix {
     fn radix_dist_max() -> u32;
 }
 
-impl<T: Radix> Radix for RevOrd<T> {
-    fn radix_dist(&self, other: &RevOrd<T>) -> u32 {
-        self.0.radix_dist(&other.0)
-    }
+macro_rules! radix_wrapper_impl {
+    ($t:ident) => {
+        impl<T: Radix> Radix for $t<T> {
+            fn radix_dist(&self, other: &$t<T>) -> u32 {
+                self.0.radix_dist(&other.0)
+            }
             
-    fn radix_dist_max() -> u32 {
-        T::radix_dist_max()
+            fn radix_dist_max() -> u32 {
+                T::radix_dist_max()
+            }
+        }
     }
 }
+
+radix_wrapper_impl!(RevOrd);
+radix_wrapper_impl!(Wrapping);
 
 macro_rules! radix_int_impl {
     ($t:ty) => {
@@ -269,20 +277,6 @@ macro_rules! radix_int_impl {
             
             fn radix_dist_max() -> u32 {
                 (std::mem::size_of::<$t>() * 8) as u32
-            }
-        }
-    }
-}
-
-macro_rules! radix_float_impl {
-    ($t:ty) => {
-        impl Radix for NotNaN<$t> {
-            fn radix_dist(&self, other: &NotNaN<$t>) -> u32 {
-                self.0.bits().radix_dist(&other.0.bits())
-            }
-            
-            fn radix_dist_max() -> u32 {
-                <$t as Ieee754>::Bits::radix_dist_max()
             }
         }
     }
@@ -300,8 +294,161 @@ radix_int_impl!(u32);
 radix_int_impl!(u64);
 radix_int_impl!(usize);
 
+macro_rules! radix_float_impl {
+    ($t:ty) => {
+        impl Radix for NotNaN<$t> {
+            fn radix_dist(&self, other: &NotNaN<$t>) -> u32 {
+                self.0.bits().radix_dist(&other.0.bits())
+            }
+            
+            fn radix_dist_max() -> u32 {
+                <$t as Ieee754>::Bits::radix_dist_max()
+            }
+        }
+    }
+}
+
 radix_float_impl!(f32);
 radix_float_impl!(f64);
+
+macro_rules! e {
+    ($e:expr) => { $e }
+}
+
+macro_rules! radix_tuple_impl {
+    ($(
+        $Tuple:ident {
+            $(($idx:tt) -> $T:ident)+
+        }
+    )+) => {
+        $(
+            impl<$($T:Radix),+> Radix for ($($T,)+) {
+                fn radix_dist(&self, other: &($($T,)+)) -> u32 {
+                    let total_dist = 0 $(+e!(<$T as Radix>::radix_dist_max()))+;
+                    
+                    $(
+                        let total_dist = total_dist - e!(<$T as Radix>::radix_dist_max());
+                        let d = e!(self.$idx.radix_dist(&other.$idx));
+                        if d != 0 { return total_dist + d }
+                    )+
+                    
+                    return 0;
+                }
+                
+                fn radix_dist_max() -> u32 {
+                    0 $(+e!(<$T as Radix>::radix_dist_max()))+
+                }
+            }
+        )+
+    }
+}
+
+radix_tuple_impl! {
+    Tuple1 {
+        (0) -> A
+    }
+    Tuple2 {
+        (0) -> A
+        (1) -> B
+    }
+    Tuple3 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+    }
+    Tuple4 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+    }
+    Tuple5 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+    }
+    Tuple6 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+    }
+    Tuple7 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+    }
+    Tuple8 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+    }
+    Tuple9 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+    }
+    Tuple10 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+    }
+    Tuple11 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
+    }
+    Tuple12 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
+        (11) -> L
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -311,6 +458,7 @@ mod tests {
     use ordered_float::NotNaN;
     use super::Radix;
     use super::RadixHeapMap;
+    use super::num::Bounded;
     use self::quickcheck::{TestResult, quickcheck};
     
     #[test]
@@ -354,7 +502,7 @@ mod tests {
     
     #[test]
     fn sort() {
-        fn prop(mut xs: Vec<u32>) -> bool {
+        fn prop<T: Ord + Radix + Copy + Bounded>(mut xs: Vec<T>) -> bool {
             let mut heap = xs.iter().map(|&d| (d,())).collect::<RadixHeapMap<_,_>>();
             
             xs.sort();
@@ -369,6 +517,11 @@ mod tests {
         }
         
         quickcheck(prop as fn(Vec<u32>) -> bool);
+        quickcheck(prop as fn(Vec<i32>) -> bool);
+        quickcheck(prop as fn(Vec<(u32, i32)>) -> bool);
+        quickcheck(prop as fn(Vec<u8>) -> bool);
+        quickcheck(prop as fn(Vec<i16>) -> bool);
+        quickcheck(prop as fn(Vec<(i64, usize)>) -> bool);
     }
     
     #[test]
