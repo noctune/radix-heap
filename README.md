@@ -7,4 +7,4 @@ heap, that items pushed onto the heap must be smaller or equal to the last item
 that was popped off the heap. This restriction allows for a better asymptotic
 runtime for certain algorithms.
 
-See [the documentation](noctune.github.io/radix-heap) for more details.
+See [the documentation](http://noctune.github.io/radix-heap) for more details.
