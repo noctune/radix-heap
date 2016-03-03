@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `RadixHeapMap` struct in crate `radix_heap`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, RadixHeapMap">
+
+    <title>radix_heap::RadixHeapMap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='index.html'>radix_heap</a></p><script>window.sidebarCurrent = {name: 'RadixHeapMap', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>radix_heap</a>::<wbr><a class='struct' href=''>RadixHeapMap</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-30' class='srclink' href='../src/radix_heap/lib.rs.html#67-71' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct RadixHeapMap&lt;K, V&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>A montone priority queue implemented with a radix heap.</p>
+
+<p>This will be a max-heap.</p>
+
+<p>It is a logic error for a key to be modified in such a way that the
+item&#39;s ordering relative to any other item, as determined by the <code>Ord</code>
+trait, changes while it is in the heap. This is normally only possible
+through <code>Cell</code>, <code>RefCell</code>, global state, I/O, or unsafe code.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl&lt;K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> + <a class='trait' href='../num/traits/trait.Bounded.html' title='num::traits::Bounded'>Bounded</a>, V&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h4>
+<div class='docblock'><p>Creates a new <code>RadixHeapMap</code> with the highest possible top value such
+that all keys are allowed.</p>
+</div><h4 id='method.clear' class='method'><code>fn <a href='#method.clear' class='fnname'>clear</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Clears a new <code>RadixHeapMap</code> and sets te top value as high as possible
+value, so all keys can be inserted into the heap.</p>
+</div></div><h3 class='impl'><code>impl&lt;K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a>, V&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.new_at' class='method'><code>fn <a href='#method.new_at' class='fnname'>new_at</a>(top: K) -&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h4>
+<div class='docblock'><p>Creates a new RadixHeapMap with a specific top value</p>
+</div><h4 id='method.clear_to' class='method'><code>fn <a href='#method.clear_to' class='fnname'>clear_to</a>(&amp;mut self, top: K)</code></h4>
+<div class='docblock'><p>Clears the elements in the heap and sets the top value to a new value</p>
+</div><h4 id='method.push' class='method'><code>fn <a href='#method.push' class='fnname'>push</a>(&amp;mut self, key: K, value: V)</code></h4>
+<div class='docblock'><p>Pushes a new key value pair onto the heap.</p>
+
+<h2 id='panics' class='section-header'><a href='#panics'>Panics</a></h2>
+<p>Panics if the key is more than the current top value.</p>
+</div><h4 id='method.constrain' class='method'><code>fn <a href='#method.constrain' class='fnname'>constrain</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Sets the top value to the current maximum key value in the heap</p>
+</div><h4 id='method.pop' class='method'><code>fn <a href='#method.pop' class='fnname'>pop</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt;</code></h4>
+<div class='docblock'><p>Pops the largest element of the heap. This might decrease the top value.</p>
+</div><h4 id='method.len' class='method'><code>fn <a href='#method.len' class='fnname'>len</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></h4>
+<div class='docblock'><p>Returns the number of elements in the heap</p>
+</div><h4 id='method.is_empty' class='method'><code>fn <a href='#method.is_empty' class='fnname'>is_empty</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Returns true if there is no elements in the heap</p>
+</div><h4 id='method.top' class='method'><code>fn <a href='#method.top' class='fnname'>top</a>(&amp;self) -&gt; K</code></h4>
+<div class='docblock'><p>The current top value. All keys pushed onto the heap must be smaller
+than this value.</p>
+</div><h4 id='method.shrink_to_fit' class='method'><code>fn <a href='#method.shrink_to_fit' class='fnname'>shrink_to_fit</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Discards as much additional capacity as possible.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> + <a class='trait' href='../num/traits/trait.Bounded.html' title='num::traits::Bounded'>Bounded</a>, V&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/default/trait.Default.html' title='core::default::Default'>Default</a> for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.default' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/default/trait.Default.html#method.default' class='fnname'>default</a>() -&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h4>
+</div><h3 class='impl'><code>impl&lt;K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> + <a class='trait' href='../num/traits/trait.Bounded.html' title='num::traits::Bounded'>Bounded</a>, V&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.FromIterator.html' title='core::iter::FromIterator'>FromIterator</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt; for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.from_iter' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/trait.FromIterator.html#method.from_iter' class='fnname'>from_iter</a>&lt;I&gt;(iter: I) -&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt; <span class='where'>where I: <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html' title='core::iter::IntoIterator'>IntoIterator</a>&lt;Item=<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt;</span></code></h4>
+</div><h3 class='impl'><code>impl&lt;K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a>, V&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.Extend.html' title='core::iter::Extend'>Extend</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt; for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.extend' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/trait.Extend.html#method.extend' class='fnname'>extend</a>&lt;I&gt;(&amp;mut self, iter: I) <span class='where'>where I: <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html' title='core::iter::IntoIterator'>IntoIterator</a>&lt;Item=<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt;</span></code></h4>
+</div><h3 class='impl'><code>impl&lt;'a, K: <a class='trait' href='../radix_heap/trait.Radix.html' title='radix_heap::Radix'>Radix</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> + 'a, V: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> + 'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.Extend.html' title='core::iter::Extend'>Extend</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt; for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.extend-1' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/trait.Extend.html#method.extend' class='fnname'>extend</a>&lt;I&gt;(&amp;mut self, iter: I) <span class='where'>where I: <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html' title='core::iter::IntoIterator'>IntoIterator</a>&lt;Item=&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(K, V)</a>&gt;</span></code></h4>
+</div><h3 class='impl'><code>impl&lt;K: <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a>, V: <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#method.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl&lt;K: <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a>, V: <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../radix_heap/struct.RadixHeapMap.html' title='radix_heap::RadixHeapMap'>RadixHeapMap</a>&lt;K, V&gt;</code></h4>
+<h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "radix_heap";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

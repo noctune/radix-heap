@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `radix_heap` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, radix_heap">
+
+    <title>radix_heap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'radix_heap', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>radix_heap</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-0' class='srclink' href='../src/radix_heap/lib.rs.html#1-579' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>A monotone priority queue implemented with a radix heap.</p>
+
+<p>A monotone priority queue is a priority queue that only allows keys to be
+inserted if their priority is less than or equal to that of the last
+extracted key.</p>
+
+<p>In this implementation, the last extracted value is known as the &quot;top&quot;
+value. The top value does not necessarily have to be the last extracted key.
+It can be lower, or initially it can be any value. Note that the constraint
+above still applies in such a case.</p>
+
+<p>Insertion is O(1) time complexity, while popping is amortized O(log n).
+More precisely, popping is O(d) where d is the radix distance from the key
+to the top value at the time of insertion. This can give better asymptotic
+running times for certain algorithms like for example Djikstra&#39;s algorithm.</p>
+
+<h1 id='example' class='section-header'><a href='#example'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>radix_heap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>heap</span> <span class='op'>=</span> <span class='ident'>radix_heap</span>::<span class='ident'>RadixHeapMap</span>::<span class='ident'>new</span>();
+<span class='ident'>heap</span>.<span class='ident'>push</span>(<span class='number'>7</span>, <span class='string'>&#39;a&#39;</span>);
+<span class='ident'>heap</span>.<span class='ident'>push</span>(<span class='number'>2</span>, <span class='string'>&#39;b&#39;</span>);
+<span class='ident'>heap</span>.<span class='ident'>push</span>(<span class='number'>9</span>, <span class='string'>&#39;c&#39;</span>);
+ 
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>pop</span>() <span class='op'>==</span> <span class='prelude-val'>Some</span>((<span class='number'>9</span>, <span class='string'>&#39;c&#39;</span>)));
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>top</span>() <span class='op'>==</span> <span class='number'>9</span>);
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>pop</span>() <span class='op'>==</span> <span class='prelude-val'>Some</span>((<span class='number'>7</span>, <span class='string'>&#39;a&#39;</span>)));
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>top</span>() <span class='op'>==</span> <span class='number'>7</span>);
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>pop</span>() <span class='op'>==</span> <span class='prelude-val'>Some</span>((<span class='number'>2</span>, <span class='string'>&#39;b&#39;</span>)));
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>top</span>() <span class='op'>==</span> <span class='number'>2</span>);
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>heap</span>.<span class='ident'>pop</span>() <span class='op'>==</span> <span class='prelude-val'>None</span>);</pre>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='struct' href='struct.RadixHeapMap.html'
+                               title='radix_heap::RadixHeapMap'>RadixHeapMap</a></td>
+                        <td class='docblock short'>
+                             <p>A montone priority queue implemented with a radix heap.</p>
+
+                        </td>
+                    </tr>
+                </table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='trait' href='trait.Radix.html'
+                               title='radix_heap::Radix'>Radix</a></td>
+                        <td class='docblock short'>
+                             <p>A number that can be compared using radix distance</p>
+
+                        </td>
+                    </tr>
+                </table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "radix_heap";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RevOrd","Type that should be ordered in the reverse order of any value it contains."]]});
