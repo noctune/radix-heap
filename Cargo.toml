@@ -1,6 +1,6 @@
 [package]
 name = "radix-heap"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Mike Pedersen <noctune9@gmail.com>"]
 description = "Fast monotone priority queues"
 documentation = "https://noctune.github.io/radix-heap"
