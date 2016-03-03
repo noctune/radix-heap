@@ -51,7 +51,7 @@ use num::Bounded;
 
 #[derive(Clone)]
 struct Bucket<K,V> {
-    max: Option<K>,
+    max: K,
     elems: Vec<(K,V)>,
 }
 
@@ -88,12 +88,12 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
     
     /// Creates a new RadixHeapMap with a specific top value
     pub fn new_at(top: K) -> RadixHeapMap<K,V> {
-        let maxdist = K::radix_dist_max();
+        let maxdist = K::radix_bits();
         let mut buckets = Vec::with_capacity(maxdist as usize + 1);
         
         for _ in 0..maxdist + 1 {
             buckets.push(Bucket{
-                max: None,
+                max: top,
                 elems: Vec::new()
             });
         }
@@ -111,10 +111,16 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
         }
     }
     
+    #[inline]
     fn push_nocheck(&mut self, key: K, value: V) {
-        let bucket = &mut self.buckets[key.radix_dist(&self.top) as usize];
+        let bucket = &mut self.buckets[key.radix_similarity(&self.top) as usize];
         
-        bucket.max = Some(bucket.max.map_or(key, |m| max(m, key)));
+        bucket.max = max(bucket.max, key);
+        
+        if bucket.elems.is_empty() {
+            bucket.max = key;
+        }
+        
         bucket.elems.push((key,value));
     }
     
@@ -123,6 +129,7 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
     /// Panics
     /// ------
     /// Panics if the key is more than the current top value.
+    #[inline]
     pub fn push(&mut self, key: K, value: V) {
         assert!(key <= self.top);
         self.len += 1;
@@ -131,18 +138,18 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
     
     /// Sets the top value to the current maximum key value in the heap
     pub fn constrain(&mut self) {
-        if self.buckets[0].elems.is_empty() {
-            let bucket = self.buckets[1..].iter()
+        if self.buckets.last().unwrap().elems.is_empty() {
+            let bucket = self.buckets[..self.buckets.len() - 1].iter()
                 .enumerate()
-                .filter_map(|(i, ref bucket)| bucket.max
-                    .map(|max| (i + 1, max)))
-                .next();
+                .rev()
+                .filter(|&(_, ref bucket)| !bucket.elems.is_empty())
+                .next()
+                .map(|(i, bucket)| (i, bucket.max));
             
             if let Some((index,max)) = bucket {
                 self.top = max;
                 let mut repush = Vec::new();
                 
-                self.buckets[index].max = None;
                 swap(&mut self.buckets[index].elems, &mut repush);
                 
                 for (k,v) in repush.drain(..) {
@@ -158,10 +165,11 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
     }
     
     /// Pops the largest element of the heap. This might decrease the top value.
+    #[inline]
     pub fn pop(&mut self) -> Option<(K,V)> {
         self.constrain();
         
-        let pop = self.buckets[0].elems.pop();
+        let pop = self.buckets.last_mut().unwrap().elems.pop();
         
         if pop.is_some() {
             self.len -= 1;
@@ -205,7 +213,12 @@ impl<K: Radix + Ord + Copy + Bounded, V> FromIterator<(K,V)> for RadixHeapMap<K,
         I: IntoIterator<Item=(K,V)>
     {
         let mut heap = RadixHeapMap::new();
-        heap.extend(iter);
+        
+        for (k,v) in iter {
+            heap.len += 1;
+            heap.push_nocheck(k,v);
+        }
+        
         heap
     }
 }
@@ -239,27 +252,34 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
 
 /// A number that can be compared using radix distance
 pub trait Radix {
-    /// The radix distance between this number and another number.
-    /// 
-    /// The radix distance of n means that the n'th bit (1 indexed) is the
-    /// highest bit in which `self` and `other` differ. It is 0 if they are
-    /// equal, and M if they are bitwise complements to each other, where M is
-    /// the number of bits.
-    fn radix_dist(&self, other: &Self) -> u32;
     
-    /// The maximum possible radix distance possible.
-    fn radix_dist_max() -> u32;
+    /// The number of high bits in a row that this and `other` has in common
+    /// 
+    /// Eg. the radix similarity of 001001 and 000001 is 2 because they share
+    /// the 2 high bits.
+    fn radix_similarity(&self, other: &Self) -> u32;
+    
+    /// Opposite of `radix_similarity`. If `radix_distance` returns 0, then `radix_similarity`
+    /// returns `radix_bits` and vice versa.
+    fn radix_distance(&self, other: &Self) -> u32 {
+        Self::radix_bits() - self.radix_similarity(other)
+    }
+    
+    /// The value returned by `radix_similarty` if all bits are equal
+    fn radix_bits() -> u32;
 }
 
 macro_rules! radix_wrapper_impl {
     ($t:ident) => {
         impl<T: Radix> Radix for $t<T> {
-            fn radix_dist(&self, other: &$t<T>) -> u32 {
-                self.0.radix_dist(&other.0)
+            #[inline]
+            fn radix_similarity(&self, other: &$t<T>) -> u32 {
+                self.0.radix_similarity(&other.0)
             }
             
-            fn radix_dist_max() -> u32 {
-                T::radix_dist_max()
+            #[inline]
+            fn radix_bits() -> u32 {
+                T::radix_bits()
             }
         }
     }
@@ -271,11 +291,13 @@ radix_wrapper_impl!(Wrapping);
 macro_rules! radix_int_impl {
     ($t:ty) => {
         impl Radix for $t {
-            fn radix_dist(&self, other: &$t) -> u32 {
-                Self::radix_dist_max() - (self ^ other).leading_zeros()
+            #[inline]
+            fn radix_similarity(&self, other: &$t) -> u32 {
+                (self ^ other).leading_zeros()
             }
             
-            fn radix_dist_max() -> u32 {
+            #[inline]
+            fn radix_bits() -> u32 {
                 (std::mem::size_of::<$t>() * 8) as u32
             }
         }
@@ -297,12 +319,14 @@ radix_int_impl!(usize);
 macro_rules! radix_float_impl {
     ($t:ty) => {
         impl Radix for NotNaN<$t> {
-            fn radix_dist(&self, other: &NotNaN<$t>) -> u32 {
-                self.0.bits().radix_dist(&other.0.bits())
+            #[inline]
+            fn radix_similarity(&self, other: &NotNaN<$t>) -> u32 {
+                self.0.bits().radix_similarity(&other.0.bits())
             }
             
-            fn radix_dist_max() -> u32 {
-                <$t as Ieee754>::Bits::radix_dist_max()
+            #[inline]
+            fn radix_bits() -> u32 {
+                <$t as Ieee754>::Bits::radix_bits()
             }
         }
     }
@@ -310,6 +334,7 @@ macro_rules! radix_float_impl {
 
 radix_float_impl!(f32);
 radix_float_impl!(f64);
+
 
 macro_rules! e {
     ($e:expr) => { $e }
@@ -323,20 +348,22 @@ macro_rules! radix_tuple_impl {
     )+) => {
         $(
             impl<$($T:Radix),+> Radix for ($($T,)+) {
-                fn radix_dist(&self, other: &($($T,)+)) -> u32 {
-                    let total_dist = 0 $(+e!(<$T as Radix>::radix_dist_max()))+;
+                #[inline]
+                fn radix_similarity(&self, other: &($($T,)+)) -> u32 {
+                    let similarity = 0;
                     
                     $(
-                        let total_dist = total_dist - e!(<$T as Radix>::radix_dist_max());
-                        let d = e!(self.$idx.radix_dist(&other.$idx));
-                        if d != 0 { return total_dist + d }
+                        let s = e!(self.$idx.radix_similarity(&other.$idx));
+                        let similarity = similarity + s;
+                        if s < <$T as Radix>::radix_bits() { return similarity }
                     )+
                     
-                    return 0;
+                    return similarity;
                 }
                 
-                fn radix_dist_max() -> u32 {
-                    0 $(+e!(<$T as Radix>::radix_dist_max()))+
+                #[inline]
+                fn radix_bits() -> u32 {
+                    0 $(+e!(<$T as Radix>::radix_bits()))+
                 }
             }
         )+
@@ -463,11 +490,11 @@ mod tests {
     
     #[test]
     fn radix_dist() {
-        assert!(4u32.radix_dist(&2) == 3);
-        assert!(3u32.radix_dist(&2) == 1);
-        assert!(2u32.radix_dist(&2) == 0);
-        assert!(1u32.radix_dist(&2) == 2);
-        assert!(0u32.radix_dist(&2) == 2);
+        assert!(4u32.radix_distance(&2) == 3);
+        assert!(3u32.radix_distance(&2) == 1);
+        assert!(2u32.radix_distance(&2) == 0);
+        assert!(1u32.radix_distance(&2) == 2);
+        assert!(0u32.radix_distance(&2) == 2);
     }
     
     #[test]
