@@ -4,13 +4,14 @@ extern crate criterion;
 extern crate rand;
 extern crate radix_heap;
 
+use rand::XorShiftRng;
 use std::collections::BinaryHeap;
 use criterion::{Criterion, Bencher, black_box};
 use radix_heap::{RadixHeapMap, Radix};
-use rand::{thread_rng, Rng, Rand};
+use rand::{Rng, Rand};
 
 fn extend_radix<T: Copy + Ord + Radix + Rand>(b: &mut Bencher) {
-    let data: Vec<T> = thread_rng().gen_iter().take(10000).collect();
+    let data: Vec<T> = XorShiftRng::new_unseeded().gen_iter().take(10000).collect();
     let mut heap = RadixHeapMap::new();
     
     b.iter(|| {
@@ -25,7 +26,7 @@ fn extend_radix<T: Copy + Ord + Radix + Rand>(b: &mut Bencher) {
 }
 
 fn extend_binary<T: Copy + Ord + Radix + Rand>(b: &mut Bencher) {
-    let data: Vec<T> = thread_rng().gen_iter().take(10000).collect();
+    let data: Vec<T> = XorShiftRng::new_unseeded().gen_iter().take(10000).collect();
     let mut heap = BinaryHeap::<T>::new();
     
     b.iter(|| {
