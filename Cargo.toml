@@ -1,20 +1,23 @@
 [package]
-name = "radix-heap"
-version = "0.2.0"
 authors = ["Mike Pedersen <noctune9@gmail.com>"]
+categories = ["data-structures"]
 description = "Fast monotone priority queues"
-documentation = "https://noctune.github.io/radix-heap"
-repository = "https://github.com/noctune/radix-heap"
-readme = "README.md"
 keywords = ["heap"]
 license = "MIT"
+name = "radix-heap"
+readme = "README.md"
+repository = "https://github.com/noctune/radix-heap"
+version = "0.3.0"
+
+[[bench]]
+harness = false
+name = "bench"
 
 [dependencies]
-ieee754 = "0.2"
-revord = "0.0.2"
-ordered-float = "0.0.2"
-num = "0.1"
+ieee754 = "0.2.2"
+ordered-float = "0.5.0"
 
 [dev-dependencies]
-rand = "0.3"
-quickcheck = "0.2"
+criterion = "0.2.3"
+quickcheck = "0.6.2"
+rand = "0.4.2"

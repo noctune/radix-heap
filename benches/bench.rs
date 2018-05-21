@@ -1,17 +1,16 @@
-#![feature(test)]
+#[macro_use]
+extern crate criterion;
 
 extern crate rand;
-extern crate test;
 extern crate radix_heap;
 
 use std::collections::BinaryHeap;
-use radix_heap::RadixHeapMap;
-use test::{Bencher, black_box};
-use rand::{thread_rng, Rng};
+use criterion::{Criterion, Bencher, black_box};
+use radix_heap::{RadixHeapMap, Radix};
+use rand::{thread_rng, Rng, Rand};
 
-#[bench]
-fn extend_radix(b: &mut Bencher) {
-    let data: Vec<u32> = thread_rng().gen_iter().take(10000).collect();
+fn extend_radix<T: Copy + Ord + Radix + Rand>(b: &mut Bencher) {
+    let data: Vec<T> = thread_rng().gen_iter().take(10000).collect();
     let mut heap = RadixHeapMap::new();
     
     b.iter(|| {
@@ -25,10 +24,9 @@ fn extend_radix(b: &mut Bencher) {
     });
 }
 
-#[bench]
-fn extend_binary(b: &mut Bencher) {
-    let data: Vec<u32> = thread_rng().gen_iter().take(10000).collect();
-    let mut heap = BinaryHeap::<u32>::new();
+fn extend_binary<T: Copy + Ord + Radix + Rand>(b: &mut Bencher) {
+    let data: Vec<T> = thread_rng().gen_iter().take(10000).collect();
+    let mut heap = BinaryHeap::<T>::new();
     
     b.iter(|| {
         heap.extend(data.iter());
@@ -41,7 +39,6 @@ fn extend_binary(b: &mut Bencher) {
     });
 }
 
-#[bench]
 fn pushpop_radix(b: &mut Bencher) {
     let mut heap = RadixHeapMap::<i32, ()>::new();
     
@@ -51,7 +48,7 @@ fn pushpop_radix(b: &mut Bencher) {
         for _ in 0..10000 {
             let (n,_) = heap.pop().unwrap();
             
-            for i in 0..2 {
+            for i in 0..4 {
                 heap.push(n - i, ());
             }
         }
@@ -60,7 +57,6 @@ fn pushpop_radix(b: &mut Bencher) {
     });
 }
 
-#[bench]
 fn pushpop_binary(b: &mut Bencher) {
     let mut heap = BinaryHeap::<i32>::new();
     
@@ -78,3 +74,17 @@ fn pushpop_binary(b: &mut Bencher) {
         heap.clear();
     });
 }
+
+fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("extend_radix 8", extend_radix::<u8>);
+    c.bench_function("extend_radix 16", extend_radix::<u16>);
+    c.bench_function("extend_radix 32", extend_radix::<u32>);
+    c.bench_function("extend_binary 8", extend_binary::<u8>);
+    c.bench_function("extend_binary 16", extend_binary::<u16>);
+    c.bench_function("extend_binary 32", extend_binary::<u32>);
+    c.bench_function("pushpop_radix", pushpop_radix);
+    c.bench_function("pushpop_binary", pushpop_binary);
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);

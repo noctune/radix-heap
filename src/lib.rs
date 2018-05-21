@@ -2,17 +2,12 @@
 //!
 //! A monotone priority queue is a priority queue that only allows keys to be
 //! inserted if their priority is less than or equal to that of the last
-//! extracted key.
-//!
-//! In this implementation, the last extracted value is known as the "top"
-//! value. The top value does not necessarily have to be the last extracted key.
-//! It can be lower, or initially it can be any value. Note that the constraint
-//! above still applies in such a case.
+//! extracted key (the "top" key).
 //!
 //! Insertion is O(1) time complexity, while popping is amortized O(log n).
 //! More precisely, popping is O(d) where d is the radix distance from the key
-//! to the top value at the time of insertion. This can give better asymptotic
-//! running times for certain algorithms like for example Djikstra's algorithm.
+//! to the top value at the time of insertion. This can give better performance
+//! for certain algorithms like Djikstra's algorithm.
 //!
 //! #Example
 //!
@@ -24,35 +19,80 @@
 //! heap.push(2, 'b');
 //! heap.push(9, 'c');
 //! 
+//! assert!(heap.top() == None);
 //! assert!(heap.pop() == Some((9, 'c')));
-//! assert!(heap.top() == 9);
+//! assert!(heap.top() == Some(9));
 //! assert!(heap.pop() == Some((7, 'a')));
-//! assert!(heap.top() == 7);
+//! assert!(heap.top() == Some(7));
 //! assert!(heap.pop() == Some((2, 'b')));
-//! assert!(heap.top() == 2);
+//! assert!(heap.top() == Some(2));
 //! assert!(heap.pop() == None);
 //! ```
 
 extern crate ieee754;
-extern crate revord;
 extern crate ordered_float;
-extern crate num;
 
-use std::fmt;
-use std::iter::FromIterator;
-use std::cmp::max;
-use std::mem::swap;
-use std::default::Default;
-use std::num::Wrapping;
-use revord::RevOrd;
+use std::{
+    fmt,
+    cmp::max,
+    iter::FromIterator,
+    mem::swap,
+    default::Default,
+    num::Wrapping,
+    cmp::Reverse
+};
+
 use ieee754::Ieee754;
 use ordered_float::NotNaN;
-use num::Bounded;
 
 #[derive(Clone)]
-struct Bucket<K,V> {
-    max: K,
+struct Bucket<K, V> {
+    max: Option<K>,
     elems: Vec<(K,V)>,
+}
+
+impl<K, V> Bucket<K,V> {
+    fn is_empty(&self) -> bool {
+        self.elems.is_empty()
+    }
+
+    fn drain(&mut self) -> std::vec::Drain<(K,V)> {
+        self.max = None;
+        self.elems.drain(..)
+    }
+
+    fn iter(&self) -> std::slice::Iter<(K,V)> {
+        self.elems.iter()
+    }
+
+    fn clear(&mut self) {
+        self.max = None;
+        self.elems.clear();
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.elems.shrink_to_fit();
+    }
+}
+
+impl<K: Ord + Copy, V> Bucket<K,V> {
+    fn push(&mut self, key: K, value: V) {
+        self.max = max(self.max, Some(key));
+        self.elems.push((key,value));
+    }
+
+    fn pop(&mut self) -> Option<(K,V)> {
+        self.elems.pop()
+    }
+}
+
+impl<K, V> Default for Bucket<K,V> {
+    fn default() -> Bucket<K,V> {
+        Bucket {
+            max: None,
+            elems: Vec::new()
+        }
+    }
 }
 
 /// A montone priority queue implemented with a radix heap.
@@ -64,112 +104,143 @@ struct Bucket<K,V> {
 /// trait, changes while it is in the heap. This is normally only possible
 /// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 #[derive(Clone)]
-pub struct RadixHeapMap<K,V> {
+pub struct RadixHeapMap<K, V> {
     len: usize,
-    top: K,
+    top: Option<K>,
+
+    /// The K::RADIX_BITS + 1 number of buckets the items can land in.
+    ///
+    /// TODO: when rust supports associated consts as array sizes, use a fixed
+    /// array instead of a vec.
     buckets: Vec<Bucket<K,V>>,
+
+    /// The initial entries before a item is popped from the heap
+    initial: Bucket<K,V>
 }
 
-impl<K: Radix + Ord + Copy + Bounded, V> RadixHeapMap<K,V> {
-    /// Creates a new `RadixHeapMap` with the highest possible top value such
-    /// that all keys are allowed.
+impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
+    /// Create an empty `RadixHeapMap`
     pub fn new() -> RadixHeapMap<K,V> {
-        RadixHeapMap::new_at(K::max_value())
-    }
-    
-    /// Clears a new `RadixHeapMap` and sets te top value as high as possible
-    /// value, so all keys can be inserted into the heap.
-    pub fn clear(&mut self) {
-        self.clear_to(K::max_value());
-    }
-}
-
-impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
-    
-    /// Creates a new RadixHeapMap with a specific top value
-    pub fn new_at(top: K) -> RadixHeapMap<K,V> {
-        let maxdist = K::radix_bits();
-        let mut buckets = Vec::with_capacity(maxdist as usize + 1);
-        
-        for _ in 0..maxdist + 1 {
-            buckets.push(Bucket{
-                max: top,
-                elems: Vec::new()
-            });
+        RadixHeapMap {
+            len: 0,
+            top: None,
+            buckets: (0..K::RADIX_BITS + 1)
+                .map(|_| Bucket::default())
+                .collect(),
+            initial: Bucket::default(),
         }
-        
-        RadixHeapMap { len: 0, top: top, buckets: buckets } 
+    }
+
+    /// Create an empty `RadixHeapMap` with the top key set to a specific
+    /// value.
+    /// 
+    /// This can be more efficient if you have a known minimum bound of the
+    /// items being pushed to the heap.
+    pub fn new_at(top: K) -> RadixHeapMap<K,V> {
+        RadixHeapMap {
+            len: 0,
+            top: Some(top),
+            buckets: (0..K::RADIX_BITS + 1)
+                .map(|_| Bucket::default())
+                .collect(),
+            initial: Bucket::default(),
+        }
     }
     
-    /// Clears the elements in the heap and sets the top value to a new value
-    pub fn clear_to(&mut self, top: K) {
-        self.top = top;
+    /// Drops all items form the `RadixHeapMap` and sets the top key to `None`.
+    pub fn clear(&mut self) {
         self.len = 0;
-        
+        self.top = None;
+
         for bucket in &mut self.buckets {
-            bucket.elems.clear();
+            bucket.clear();
+        }
+    }
+
+    /// Drop all items from the `RadixHeapMap` and sets the top key to a
+    /// specific value.
+    /// 
+    /// This can be more efficient if you have a known minimum bound of the
+    /// items being pushed to the heap.
+    pub fn clear_to(&mut self, top: K) {
+        self.len = 0;
+        self.top = Some(top);
+
+        for bucket in &mut self.buckets {
+            bucket.clear();
         }
     }
     
     #[inline]
-    fn push_nocheck(&mut self, key: K, value: V) {
-        let bucket = &mut self.buckets[key.radix_similarity(&self.top) as usize];
+    fn push_nocheck(&mut self, key: K, value: V, top: K) {
+        self.buckets[key.radix_distance(&top) as usize].push(key, value);
+    }
+
+    #[inline]
+    fn repush_bucket<F>(&mut self, mut bucket: F)
+        where F: FnMut(&mut Self) -> &mut Bucket<K,V>
+    {
+        let mut repush = Bucket::default();
         
-        bucket.max = max(bucket.max, key);
+        swap(bucket(self), &mut repush);
+        let top = repush.max.expect("Expected non-empty bucket");
+        self.top = Some(top);
         
-        if bucket.elems.is_empty() {
-            bucket.max = key;
+        for (k,v) in repush.drain() {
+            self.push_nocheck(k, v, top);
         }
         
-        bucket.elems.push((key,value));
+        // Swap `repush` back again (purely to save memory allocation,
+        // they are both empty at this point but `repush` has some
+        // memory allocated)
+        swap(bucket(self), &mut repush);
+
+        debug_assert!(repush.is_empty());
     }
-    
+
     /// Pushes a new key value pair onto the heap.
     /// 
     /// Panics
     /// ------
-    /// Panics if the key is more than the current top value.
+    /// Panics if the key is more than the current top key.
     #[inline]
     pub fn push(&mut self, key: K, value: V) {
-        assert!(key <= self.top);
+        if let Some(top) = self.top {
+            assert!(key <= top, "Key must be lower or equal to current top key");
+            self.push_nocheck(key, value, top);
+        } else {
+            self.initial.push(key, value);
+        }
+
         self.len += 1;
-        self.push_nocheck(key, value);
     }
     
     /// Sets the top value to the current maximum key value in the heap
     pub fn constrain(&mut self) {
-        if self.buckets.last().unwrap().elems.is_empty() {
-            let bucket = self.buckets[..self.buckets.len() - 1].iter()
+        if self.top.is_some() {
+            let index = self.buckets.iter()
                 .enumerate()
-                .rev()
-                .filter(|&(_, ref bucket)| !bucket.elems.is_empty())
-                .next()
-                .map(|(i, bucket)| (i, bucket.max));
+                .find(|&(_, bucket)| !bucket.is_empty())
+                .map(|(i, _)| i);
             
-            if let Some((index,max)) = bucket {
-                self.top = max;
-                let mut repush = Vec::new();
-                
-                swap(&mut self.buckets[index].elems, &mut repush);
-                
-                for (k,v) in repush.drain(..) {
-                    self.push_nocheck(k, v);
+            if let Some(index) = index {
+                if index != 0 {
+                    self.repush_bucket(|x| &mut x.buckets[index]);
                 }
-                
-                // Swap `repush` back again (purely to save memory allocation,
-                // they are both empty at this point but `repush` has some
-                // memory allocated)
-                swap(&mut self.buckets[index].elems, &mut repush);
             }
+        } else if !self.initial.is_empty() {
+            self.repush_bucket(|x| &mut x.initial);
         }
     }
     
-    /// Pops the largest element of the heap. This might decrease the top value.
+    /// Pops the largest element of the heap. This may increase the top value.
     #[inline]
     pub fn pop(&mut self) -> Option<(K,V)> {
         self.constrain();
         
-        let pop = self.buckets.last_mut().unwrap().elems.pop();
+        let pop = self.buckets.first_mut()
+            .expect("Expected at least one bucket")
+            .pop();
         
         if pop.is_some() {
             self.len -= 1;
@@ -190,33 +261,32 @@ impl<K: Radix + Ord + Copy,V> RadixHeapMap<K,V> {
     
     /// The current top value. All keys pushed onto the heap must be smaller
     /// than this value.
-    pub fn top(&self) -> K {
+    pub fn top(&self) -> Option<K> {
         self.top
     }
     
     /// Discards as much additional capacity as possible.
     pub fn shrink_to_fit(&mut self) {
         for bucket in &mut self.buckets {
-            bucket.elems.shrink_to_fit();
+            bucket.shrink_to_fit();
         }
     }
 }
 
-impl<K: Radix + Ord + Copy + Bounded, V> Default for RadixHeapMap<K,V> {
+impl<K: Radix + Ord + Copy, V> Default for RadixHeapMap<K,V> {
     fn default() -> RadixHeapMap<K,V> {
         RadixHeapMap::new()
     }
 }
 
-impl<K: Radix + Ord + Copy + Bounded, V> FromIterator<(K,V)> for RadixHeapMap<K,V> {
+impl<K: Radix + Ord + Copy, V> FromIterator<(K,V)> for RadixHeapMap<K,V> {
     fn from_iter<I>(iter: I) -> RadixHeapMap<K,V> where
         I: IntoIterator<Item=(K,V)>
     {
         let mut heap = RadixHeapMap::new();
         
         for (k,v) in iter {
-            heap.len += 1;
-            heap.push_nocheck(k,v);
+            heap.push(k,v);
         }
         
         heap
@@ -245,7 +315,7 @@ impl<'a, K: Radix + Ord + Copy + 'a, V: Copy + 'a> Extend<&'a (K,V)> for RadixHe
 
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = self.buckets.iter().flat_map(|b| b.elems.iter());
+        let entries = self.buckets.iter().flat_map(|b| b.iter());
         f.debug_list().entries(entries).finish()
     }
 }
@@ -262,11 +332,11 @@ pub trait Radix {
     /// Opposite of `radix_similarity`. If `radix_distance` returns 0, then `radix_similarity`
     /// returns `radix_bits` and vice versa.
     fn radix_distance(&self, other: &Self) -> u32 {
-        Self::radix_bits() - self.radix_similarity(other)
+        Self::RADIX_BITS - self.radix_similarity(other)
     }
     
     /// The value returned by `radix_similarty` if all bits are equal
-    fn radix_bits() -> u32;
+    const RADIX_BITS: u32;
 }
 
 macro_rules! radix_wrapper_impl {
@@ -277,15 +347,12 @@ macro_rules! radix_wrapper_impl {
                 self.0.radix_similarity(&other.0)
             }
             
-            #[inline]
-            fn radix_bits() -> u32 {
-                T::radix_bits()
-            }
+            const RADIX_BITS: u32 = T::RADIX_BITS;
         }
     }
 }
 
-radix_wrapper_impl!(RevOrd);
+radix_wrapper_impl!(Reverse);
 radix_wrapper_impl!(Wrapping);
 
 macro_rules! radix_int_impl {
@@ -296,10 +363,7 @@ macro_rules! radix_int_impl {
                 (self ^ other).leading_zeros()
             }
             
-            #[inline]
-            fn radix_bits() -> u32 {
-                (std::mem::size_of::<$t>() * 8) as u32
-            }
+            const RADIX_BITS: u32 = (std::mem::size_of::<$t>() * 8) as u32;
         }
     }
 }
@@ -321,24 +385,16 @@ macro_rules! radix_float_impl {
         impl Radix for NotNaN<$t> {
             #[inline]
             fn radix_similarity(&self, other: &NotNaN<$t>) -> u32 {
-                self.0.bits().radix_similarity(&other.0.bits())
+                self.bits().radix_similarity(&other.bits())
             }
             
-            #[inline]
-            fn radix_bits() -> u32 {
-                <$t as Ieee754>::Bits::radix_bits()
-            }
+            const RADIX_BITS: u32 = <$t as Ieee754>::Bits::RADIX_BITS;
         }
     }
 }
 
 radix_float_impl!(f32);
 radix_float_impl!(f64);
-
-
-macro_rules! e {
-    ($e:expr) => { $e }
-}
 
 macro_rules! radix_tuple_impl {
     ($(
@@ -353,18 +409,14 @@ macro_rules! radix_tuple_impl {
                     let similarity = 0;
                     
                     $(
-                        let s = e!(self.$idx.radix_similarity(&other.$idx));
+                        let s = self.$idx.radix_similarity(&other.$idx);
                         let similarity = similarity + s;
-                        if s < <$T as Radix>::radix_bits() { return similarity }
+                        if s < <$T as Radix>::RADIX_BITS { return similarity }
                     )+
                     
                     return similarity;
                 }
-                
-                #[inline]
-                fn radix_bits() -> u32 {
-                    0 $(+e!(<$T as Radix>::radix_bits()))+
-                }
+                const RADIX_BITS: u32 = 0 $(+<$T as Radix>::RADIX_BITS)+;
             }
         )+
     }
@@ -481,11 +533,11 @@ radix_tuple_impl! {
 mod tests {
     extern crate quickcheck;
     
+    use std::cmp::Reverse;
     use std::f32;
     use ordered_float::NotNaN;
     use super::Radix;
     use super::RadixHeapMap;
-    use super::num::Bounded;
     use self::quickcheck::{TestResult, quickcheck};
     
     #[test]
@@ -517,6 +569,25 @@ mod tests {
     }
     
     #[test]
+    fn rev_push_pop() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(Reverse(0), 'a');
+        heap.push(Reverse(3), 'b');
+        heap.push(Reverse(2), 'c');
+        
+        assert!(heap.len() == 3); 
+        assert!(!heap.is_empty()); 
+        
+        assert!(heap.pop() == Some((Reverse(0),'a'))); 
+        assert!(heap.pop() == Some((Reverse(2),'c')));
+        assert!(heap.pop() == Some((Reverse(3),'b')));
+        assert!(heap.pop() == None);
+        
+        assert!(heap.len() == 0);
+        assert!(heap.is_empty());
+    }
+    
+    #[test]
     #[should_panic]
     fn push_pop_panic() {
         let mut heap = RadixHeapMap::new();
@@ -529,8 +600,10 @@ mod tests {
     
     #[test]
     fn sort() {
-        fn prop<T: Ord + Radix + Copy + Bounded>(mut xs: Vec<T>) -> bool {
-            let mut heap = xs.iter().map(|&d| (d,())).collect::<RadixHeapMap<_,_>>();
+        fn prop<T: Ord + Radix + Copy>(mut xs: Vec<T>) -> bool {
+            let mut heap = xs.iter()
+                .map(|&d| (d,()))
+                .collect::<RadixHeapMap<_,_>>();
             
             xs.sort();
             
@@ -558,9 +631,9 @@ mod tests {
                 return TestResult::discard();
             }
             
-            let mut xs: Vec<_> = xs.into_iter().map(|x| NotNaN(x)).collect();
+            let mut xs: Vec<_> = xs.into_iter().map(|x| NotNaN::from(x)).collect();
             
-            let mut heap = RadixHeapMap::new_at(NotNaN(f32::INFINITY));
+            let mut heap = RadixHeapMap::new();
             heap.extend(xs.iter().map(|&d| (d,())));
             
             xs.sort();
