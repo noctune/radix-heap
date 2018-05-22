@@ -151,6 +151,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
     pub fn clear(&mut self) {
         self.len = 0;
         self.top = None;
+        self.initial.clear();
 
         for bucket in &mut self.buckets {
             bucket.clear();
@@ -165,6 +166,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
     pub fn clear_to(&mut self, top: K) {
         self.len = 0;
         self.top = Some(top);
+        self.initial.clear();
 
         for bucket in &mut self.buckets {
             bucket.clear();
@@ -267,6 +269,8 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
     
     /// Discards as much additional capacity as possible.
     pub fn shrink_to_fit(&mut self) {
+        self.initial.shrink_to_fit();
+
         for bucket in &mut self.buckets {
             bucket.shrink_to_fit();
         }
@@ -547,6 +551,14 @@ mod tests {
         assert!(2u32.radix_distance(&2) == 0);
         assert!(1u32.radix_distance(&2) == 2);
         assert!(0u32.radix_distance(&2) == 2);
+    }
+
+    #[test]
+    fn clear() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(0u32, 'a');
+        heap.clear();
+        assert!(heap.pop().is_none());
     }
     
     #[test]
