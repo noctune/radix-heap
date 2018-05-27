@@ -9,7 +9,7 @@
 //! to the top value at the time of insertion. This can give better performance
 //! for certain algorithms like Djikstra's algorithm.
 //!
-//! #Example
+//! # Example
 //!
 //! ```
 //! extern crate radix_heap;
