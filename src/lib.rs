@@ -275,6 +275,20 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
             bucket.shrink_to_fit();
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.buckets.iter()
+            .flat_map(|b| b.iter())
+            .chain(self.initial.iter())
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.iter().map(|(k, _)| k)
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.iter().map(|(_, v)| v)
+    }
 }
 
 impl<K: Radix + Ord + Copy, V> Default for RadixHeapMap<K,V> {
@@ -660,5 +674,37 @@ mod tests {
         }
         
         quickcheck(prop as fn(Vec<f32>) -> TestResult);
+    }
+
+    #[test]
+    fn iter_yeilds_all_elements() {
+        fn prop<T: Ord + Radix + Copy>(mut xs: Vec<T>) -> TestResult {
+            let mut heap = xs.iter()
+                .map(|&d| (d,()))
+                .collect::<RadixHeapMap<_,_>>();
+
+            // Check that the iterator yields all elements inside the heap
+            for (k, ()) in heap.iter() {
+                for i in 0..xs.len() {
+                   if xs[i] == *k {
+                        xs.remove(i);
+                        break;
+                   }
+                }
+            }
+
+            if xs.is_empty() {
+                TestResult::passed()
+            } else {
+                TestResult::failed()
+            }
+        }
+
+        quickcheck(prop as fn(Vec<u32>) -> TestResult);
+        quickcheck(prop as fn(Vec<i32>) -> TestResult);
+        quickcheck(prop as fn(Vec<(u32, i32)>) -> TestResult);
+        quickcheck(prop as fn(Vec<u8>) -> TestResult);
+        quickcheck(prop as fn(Vec<i16>) -> TestResult);
+        quickcheck(prop as fn(Vec<(i64, usize)>) -> TestResult);
     }
 }
