@@ -275,7 +275,9 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
             bucket.shrink_to_fit();
         }
     }
+}
 
+impl<K, V> RadixHeapMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.buckets.iter()
             .flat_map(|b| b.iter())
@@ -333,7 +335,7 @@ impl<'a, K: Radix + Ord + Copy + 'a, V: Copy + 'a> Extend<&'a (K,V)> for RadixHe
 
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = self.buckets.iter().flat_map(|b| b.iter());
+        let entries = self.iter();
         f.debug_list().entries(entries).finish()
     }
 }
