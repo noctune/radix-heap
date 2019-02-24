@@ -126,7 +126,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
         RadixHeapMap {
             len: 0,
             top: None,
-            buckets: (0..K::RADIX_BITS + 1)
+            buckets: (0..=K::RADIX_BITS)
                 .map(|_| Bucket::default())
                 .collect(),
             initial: Bucket::default(),
@@ -142,7 +142,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
         RadixHeapMap {
             len: 0,
             top: Some(top),
-            buckets: (0..K::RADIX_BITS + 1)
+            buckets: (0..=K::RADIX_BITS)
                 .map(|_| Bucket::default())
                 .collect(),
             initial: Bucket::default(),
