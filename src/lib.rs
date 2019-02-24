@@ -39,7 +39,8 @@ use std::{
     mem::swap,
     default::Default,
     num::Wrapping,
-    cmp::Reverse
+    cmp::Reverse,
+    iter::FusedIterator,
 };
 
 use ieee754::Ieee754;
@@ -63,6 +64,10 @@ impl<K, V> Bucket<K,V> {
 
     fn iter(&self) -> std::slice::Iter<(K,V)> {
         self.elems.iter()
+    }
+
+    fn into_iter(self) -> std::vec::IntoIter<(K,V)> {
+        self.elems.into_iter()
     }
 
     fn clear(&mut self) {
@@ -275,21 +280,24 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
             bucket.shrink_to_fit();
         }
     }
-}
 
-impl<K, V> RadixHeapMap<K, V> {
-    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
-        self.buckets.iter()
-            .flat_map(|b| b.iter())
-            .chain(self.initial.iter())
+    /// Returns an iterator of all key-value pairs in the RadixHeapMap in arbitrary order
+    pub fn iter(&self) -> Iter<K,V> {
+        Iter {
+            cur_bucket: self.initial.iter(),
+            buckets: self.buckets.iter(),
+            size: self.len,
+        }
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.iter().map(|(k, _)| k)
+    /// Returns an iterator of all keys in the RadixHeapMap in arbitrary order
+    pub fn keys(&self) -> Keys<K,V> {
+        Keys(self.iter())
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &V> {
-        self.iter().map(|(_, v)| v)
+    /// Returns an iterator of all values in the RadixHeapMap in arbitrary order
+    pub fn values(&self) -> Values<K,V> {
+        Values(self.iter())
     }
 }
 
@@ -333,10 +341,163 @@ impl<'a, K: Radix + Ord + Copy + 'a, V: Copy + 'a> Extend<&'a (K,V)> for RadixHe
     }
 }
 
-impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
+impl<K: Radix + Ord + Copy + fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = self.iter();
-        f.debug_list().entries(entries).finish()
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+/// An owning iterator over key-value pairs in a RadixHeapMap.
+#[derive(Clone)]
+pub struct IntoIter<K, V> {
+    cur_bucket: std::vec::IntoIter<(K, V)>,
+    buckets: std::vec::IntoIter<Bucket<K, V>>,
+    size: usize,
+}
+
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K,V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let pair @ Some(_) = self.cur_bucket.next() {
+                self.size -= 1;
+                return pair;
+            } else {
+                self.cur_bucket = self.buckets.next()?.into_iter();
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size, Some(self.size))
+    }
+
+    fn for_each<F>(self, mut f: F)
+    where
+        F: FnMut(Self::Item),
+    {
+        self.cur_bucket.for_each(&mut f);
+        self.buckets.for_each(|b| b.into_iter().for_each(&mut f));
+    }
+}
+
+impl<K, V> ExactSizeIterator for IntoIter<K, V> { }
+
+impl<K, V> FusedIterator for IntoIter<K, V> { }
+
+/// An iterator over key-value pairs in a RadixHeapMap.
+#[derive(Clone)]
+pub struct Iter<'a, K, V> {
+    cur_bucket: std::slice::Iter<'a, (K, V)>,
+    buckets: std::slice::Iter<'a, Bucket<K, V>>,
+    size: usize,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = &'a (K,V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let pair @ Some(_) = self.cur_bucket.next() {
+                self.size -= 1;
+                return pair;
+            } else {
+                self.cur_bucket = self.buckets.next()?.iter();
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size, Some(self.size))
+    }
+
+    fn for_each<F>(self, mut f: F)
+    where
+        F: FnMut(Self::Item),
+    {
+        self.cur_bucket.for_each(&mut f);
+        self.buckets.for_each(|b| b.iter().for_each(&mut f));
+    }
+}
+
+impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> { }
+
+impl<'a, K, V> FusedIterator for Iter<'a, K, V> { }
+
+/// An iterator over keys in a RadixHeapMap.
+#[derive(Clone)]
+pub struct Keys<'a, K, V>(Iter<'a, K, V>);
+
+impl<'a, K, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(k,_)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    fn for_each<F>(self, mut f: F)
+    where
+        F: FnMut(Self::Item),
+    {
+        self.0.for_each(|(k,_)| f(k))
+    }
+}
+
+impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> { }
+
+impl<'a, K, V> FusedIterator for Keys<'a, K, V> { }
+
+/// An iterator over values in a RadixHeapMap.
+#[derive(Clone)]
+pub struct Values<'a, K, V>(Iter<'a, K, V>);
+
+impl<'a, K, V> Iterator for Values<'a, K, V> {
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(_,v)| v)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    fn for_each<F>(self, mut f: F)
+    where
+        F: FnMut(Self::Item),
+    {
+        self.0.for_each(|(_,v)| f(v))
+    }
+}
+
+impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> { }
+
+impl<'a, K, V> FusedIterator for Values<'a, K, V> { }
+
+impl<K: Radix + Ord + Copy, V> IntoIterator for RadixHeapMap<K,V> {
+    type Item = (K,V);
+    type IntoIter = IntoIter<K,V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            cur_bucket: self.initial.into_iter(),
+            buckets: self.buckets.into_iter(),
+            size: self.len,
+        }
+    }
+}
+
+impl<'a, K: Radix + Ord + Copy, V> IntoIterator for &'a RadixHeapMap<K,V> {
+    type Item = &'a (K,V);
+    type IntoIter = Iter<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -681,7 +842,7 @@ mod tests {
     #[test]
     fn iter_yeilds_all_elements() {
         fn prop<T: Ord + Radix + Copy>(mut xs: Vec<T>) -> TestResult {
-            let mut heap = xs.iter()
+            let heap = xs.iter()
                 .map(|&d| (d,()))
                 .collect::<RadixHeapMap<_,_>>();
 
@@ -708,5 +869,30 @@ mod tests {
         quickcheck(prop as fn(Vec<u8>) -> TestResult);
         quickcheck(prop as fn(Vec<i16>) -> TestResult);
         quickcheck(prop as fn(Vec<(i64, usize)>) -> TestResult);
+    }
+
+    #[test]
+    fn into_iter_inital() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(1, 2);
+        heap.push(5, 2);
+
+        let mut vec: Vec<_> = heap.into_iter().collect();
+        vec.sort();
+        assert_eq!(vec, vec![(1, 2), (5, 2)]);
+    }
+
+    #[test]
+    fn into_iter() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(1, 2);
+        heap.push(5, 4);
+        heap.push(7, 1);
+
+        assert_eq!(Some((7,1)), heap.pop());
+
+        let mut vec: Vec<_> = heap.into_iter().collect();
+        vec.sort();
+        assert_eq!(vec, vec![(1, 2), (5, 4)]);
     }
 }
