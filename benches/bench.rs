@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-
-extern crate rand;
-extern crate radix_heap;
+use criterion::{criterion_main, criterion_group};
 
 use rand::XorShiftRng;
 use std::collections::BinaryHeap;

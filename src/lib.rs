@@ -29,9 +29,6 @@
 //! assert!(heap.pop() == None);
 //! ```
 
-extern crate ieee754;
-extern crate ordered_float;
-
 use std::{
     fmt,
     cmp::max,
