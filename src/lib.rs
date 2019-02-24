@@ -277,6 +277,22 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K,V> {
     }
 }
 
+impl<K, V> RadixHeapMap<K, V> {
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.buckets.iter()
+            .flat_map(|b| b.iter())
+            .chain(self.initial.iter())
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.iter().map(|(k, _)| k)
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.iter().map(|(_, v)| v)
+    }
+}
+
 impl<K: Radix + Ord + Copy, V> Default for RadixHeapMap<K,V> {
     fn default() -> RadixHeapMap<K,V> {
         RadixHeapMap::new()
@@ -319,7 +335,7 @@ impl<'a, K: Radix + Ord + Copy + 'a, V: Copy + 'a> Extend<&'a (K,V)> for RadixHe
 
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RadixHeapMap<K,V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = self.buckets.iter().flat_map(|b| b.iter());
+        let entries = self.iter();
         f.debug_list().entries(entries).finish()
     }
 }
@@ -660,5 +676,37 @@ mod tests {
         }
         
         quickcheck(prop as fn(Vec<f32>) -> TestResult);
+    }
+
+    #[test]
+    fn iter_yeilds_all_elements() {
+        fn prop<T: Ord + Radix + Copy>(mut xs: Vec<T>) -> TestResult {
+            let mut heap = xs.iter()
+                .map(|&d| (d,()))
+                .collect::<RadixHeapMap<_,_>>();
+
+            // Check that the iterator yields all elements inside the heap
+            for (k, ()) in heap.iter() {
+                for i in 0..xs.len() {
+                   if xs[i] == *k {
+                        xs.remove(i);
+                        break;
+                   }
+                }
+            }
+
+            if xs.is_empty() {
+                TestResult::passed()
+            } else {
+                TestResult::failed()
+            }
+        }
+
+        quickcheck(prop as fn(Vec<u32>) -> TestResult);
+        quickcheck(prop as fn(Vec<i32>) -> TestResult);
+        quickcheck(prop as fn(Vec<(u32, i32)>) -> TestResult);
+        quickcheck(prop as fn(Vec<u8>) -> TestResult);
+        quickcheck(prop as fn(Vec<i16>) -> TestResult);
+        quickcheck(prop as fn(Vec<(i64, usize)>) -> TestResult);
     }
 }
