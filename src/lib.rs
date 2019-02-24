@@ -600,6 +600,14 @@ macro_rules! radix_tuple_impl {
     }
 }
 
+impl Radix for () {
+    #[inline]
+    fn radix_similarity(&self, _: &()) -> u32 {
+        0
+    }
+    const RADIX_BITS: u32 = 0;
+}
+
 radix_tuple_impl! {
     Tuple1 {
         (0) -> A
@@ -860,6 +868,7 @@ mod tests {
             }
         }
 
+        quickcheck(prop as fn(Vec<()>) -> TestResult);
         quickcheck(prop as fn(Vec<u32>) -> TestResult);
         quickcheck(prop as fn(Vec<i32>) -> TestResult);
         quickcheck(prop as fn(Vec<(u32, i32)>) -> TestResult);
