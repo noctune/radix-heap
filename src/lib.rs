@@ -1,13 +1,21 @@
+#![deny(missing_docs)]
+
 //! A monotone priority queue implemented with a radix heap.
 //!
-//! A monotone priority queue is a priority queue that only allows keys to be
-//! inserted if their priority is less than or equal to that of the last
-//! extracted key (the "top" key).
+//! A monotone priority queue is a variant of priority queues (itself a
+//! generalization of heaps) that requires that the extracted elements follow a
+//! monotonic sequence. This means that you cannot insert an element into a
+//! radix heap that is smaller than the last extracted element.
 //!
-//! Insertion is O(1) time complexity, while popping is amortized O(log n).
-//! More precisely, popping is O(d) where d is the radix distance from the key
-//! to the top value at the time of insertion. This can give better performance
-//! for certain algorithms like Djikstra's algorithm.
+//! The key of the last extracted element is called the "top" key of the radix
+//! heap. Thus any value pushed onto the heap must be larger than or equal to
+//! the top key.
+//!
+//! In return for this restriction, the radix heap does O(1) inserts. Popping an
+//! element is O(log m) where m is the difference between a popped key and the
+//! top key at the time the element was inserted. Note that this does not depend
+//! on the number of elements in the radix heap. This means that for workloads
+//! where this difference is bounded by a constant, the radix heap has O(1) pop.
 //!
 //! # Example
 //!
@@ -95,6 +103,21 @@ impl<K, V> Default for Bucket<K, V> {
 ///
 /// This will be a max-heap.
 ///
+/// A monotone priority queue is a variant of priority queues (itself a
+/// generalization of heaps) that requires that the extracted elements follow a
+/// monotonic sequence. This means that you cannot insert an element into a
+/// radix heap that is smaller than the last extracted element.
+///
+/// The key of the last extracted element is called the "top" key of the radix
+/// heap. Thus any value pushed onto the heap must be larger than or equal to
+/// the top key.
+///
+/// In return for this restriction, the radix heap does O(1) inserts. Popping an
+/// element is O(log m) where m is the difference between a popped key and the
+/// top key at the time the element was inserted. Note that this does not depend
+/// on the number of elements in the radix heap. This means that for workloads
+/// where this difference is bounded by a constant, the radix heap has O(1) pop.
+///
 /// It is a logic error for a key to be modified in such a way that the
 /// item's ordering relative to any other item, as determined by the `Ord`
 /// trait, changes while it is in the heap. This is normally only possible
@@ -102,6 +125,8 @@ impl<K, V> Default for Bucket<K, V> {
 #[derive(Clone)]
 pub struct RadixHeapMap<K, V> {
     len: usize,
+
+    /// The current top key, or none if one is not set yet.
     top: Option<K>,
 
     /// The K::RADIX_BITS + 1 number of buckets the items can land in.
@@ -110,7 +135,7 @@ pub struct RadixHeapMap<K, V> {
     /// array instead of a vec.
     buckets: Vec<Bucket<K, V>>,
 
-    /// The initial entries before a item is popped from the heap
+    /// The initial entries before a top key is found.
     initial: Bucket<K, V>,
 }
 
@@ -156,13 +181,8 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     /// This can be more efficient if you have a known minimum bound of the
     /// items being pushed to the heap.
     pub fn clear_to(&mut self, top: K) {
-        self.len = 0;
+        self.clear();
         self.top = Some(top);
-        self.initial.clear();
-
-        for bucket in &mut self.buckets {
-            bucket.clear();
-        }
     }
 
     #[inline]
@@ -230,7 +250,13 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         }
     }
 
-    /// Pops the largest element of the heap. This may increase the top value.
+    /// Remove the greatest element from the heap and returns it, or `None` if
+    /// empty.
+    ///
+    /// If there is a tie between multiple elements, the last inserted element
+    /// will be popped first.
+    ///
+    /// This will set the top key to the extracted key.
     #[inline]
     pub fn pop(&mut self) -> Option<(K, V)> {
         self.constrain();
@@ -571,6 +597,14 @@ macro_rules! radix_float_impl {
 radix_float_impl!(f32);
 radix_float_impl!(f64);
 
+impl Radix for () {
+    #[inline]
+    fn radix_similarity(&self, _: &()) -> u32 {
+        0
+    }
+    const RADIX_BITS: u32 = 0;
+}
+
 macro_rules! radix_tuple_impl {
     ($(
         $Tuple:ident {
@@ -595,14 +629,6 @@ macro_rules! radix_tuple_impl {
             }
         )+
     }
-}
-
-impl Radix for () {
-    #[inline]
-    fn radix_similarity(&self, _: &()) -> u32 {
-        0
-    }
-    const RADIX_BITS: u32 = 0;
 }
 
 radix_tuple_impl! {
@@ -790,7 +816,8 @@ mod tests {
     #[test]
     fn sort() {
         fn prop<T: Ord + Radix + Copy>(mut xs: Vec<T>) -> bool {
-            let mut heap = xs.iter().map(|&d| (d, ())).collect::<RadixHeapMap<_, _>>();
+            let mut heap: RadixHeapMap<_, _> =
+                xs.iter().enumerate().map(|(i, &d)| (d, i)).collect();
 
             xs.sort();
 
@@ -803,6 +830,7 @@ mod tests {
             return false;
         }
 
+        quickcheck(prop as fn(Vec<()>) -> bool);
         quickcheck(prop as fn(Vec<u32>) -> bool);
         quickcheck(prop as fn(Vec<i32>) -> bool);
         quickcheck(prop as fn(Vec<(u32, i32)>) -> bool);
@@ -819,11 +847,10 @@ mod tests {
             }
 
             let mut xs: Vec<_> = xs.into_iter().map(|x| NotNaN::from(x)).collect();
-
-            let mut heap = RadixHeapMap::new();
-            heap.extend(xs.iter().map(|&d| (d, ())));
-
             xs.sort();
+
+            let mut heap: RadixHeapMap<_, _> =
+                xs.iter().enumerate().map(|(i, &d)| (d, i)).collect();
 
             while xs.pop() == heap.pop().map(|(k, _)| k) {
                 if xs.is_empty() {
@@ -859,7 +886,6 @@ mod tests {
             }
         }
 
-        quickcheck(prop as fn(Vec<()>) -> TestResult);
         quickcheck(prop as fn(Vec<u32>) -> TestResult);
         quickcheck(prop as fn(Vec<i32>) -> TestResult);
         quickcheck(prop as fn(Vec<(u32, i32)>) -> TestResult);

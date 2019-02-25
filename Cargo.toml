@@ -7,7 +7,7 @@ license = "MIT"
 name = "radix-heap"
 readme = "README.md"
 repository = "https://github.com/noctune/radix-heap"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2018"
 
 [[bench]]

@@ -2,27 +2,27 @@
 
 [![Build Status](https://travis-ci.org/Noctune/radix-heap.svg?branch=master)](https://travis-ci.org/Noctune/radix-heap)
 
-A radix heap is kind of *monotone* priority queue. Monotone means, for a max-
-heap, that items pushed onto the heap must be smaller or equal to the last item
-that was popped off the heap. It has O(1) push and amortized O(log n) pop. The
-pop cost can also be described as amortixed O(log m) where m is the difference
-between the value popped *p* and the and the last popped value at the time of 
-*p*'s insertion. 
+Fast monotone priority queues.
 
-See [the documentation](https://docs.rs/radix-heap/) for more details.
+A monotone priority queue is a variant of priority queues (itself a
+generalization of heaps) that requires that the extracted elements follow a
+monotonic sequence. This means that you cannot insert an element into a
+radix heap that is smaller than the last extracted element.
+
+The key of the last extracted element is called the "top" key of the radix
+heap. Thus any value pushed onto the heap must be larger than or equal to
+the top key.
+
+In return for this restriction, the radix heap does O(1) inserts. Popping an
+element is O(log m) where m is the difference between a popped key and the
+top key at the time the element was inserted. Note that this does not depend
+on the number of elements in the radix heap. This means that for workloads
+where this difference is bounded by a constant, the radix heap has O(1) pop.
 
 # Performance
 
 Here is a summary of the benchmarks from running them on my machine:
 
-    extend_radix 8          time:   [19.475 us 19.479 us 19.483 us]
-    extend_radix 16         time:   [20.746 us 20.783 us 20.842 us]
-    extend_radix 32         time:   [19.624 us 19.629 us 19.637 us]
-    extend_radix 64         time:   [31.839 us 31.869 us 31.906 us]
-    extend_binary 8         time:   [95.684 us 95.693 us 95.706 us]
-    extend_binary 16        time:   [91.204 us 91.260 us 91.315 us]
-    extend_binary 32        time:   [92.068 us 93.321 us 95.324 us]
-    extend_binary 64        time:   [90.484 us 90.590 us 90.718 us]
     sort_radix 8            time:   [281.10 us 281.95 us 283.09 us]
     sort_radix 16           time:   [491.76 us 492.83 us 494.20 us]
     sort_radix 32           time:   [526.14 us 526.24 us 526.34 us]
