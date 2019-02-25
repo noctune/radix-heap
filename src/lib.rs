@@ -99,24 +99,11 @@ impl<K, V> Default for Bucket<K, V> {
     }
 }
 
-/// A montone priority queue implemented with a radix heap.
+/// A montone priority queue implemented using a radix heap.
 ///
 /// This will be a max-heap.
 ///
-/// A monotone priority queue is a variant of priority queues (itself a
-/// generalization of heaps) that requires that the extracted elements follow a
-/// monotonic sequence. This means that you cannot insert an element into a
-/// radix heap that is smaller than the last extracted element.
-///
-/// The key of the last extracted element is called the "top" key of the radix
-/// heap. Thus any value pushed onto the heap must be larger than or equal to
-/// the top key.
-///
-/// In return for this restriction, the radix heap does O(1) inserts. Popping an
-/// element is O(log m) where m is the difference between a popped key and the
-/// top key at the time the element was inserted. Note that this does not depend
-/// on the number of elements in the radix heap. This means that for workloads
-/// where this difference is bounded by a constant, the radix heap has O(1) pop.
+/// See the [module documentation](index.html) for more information.
 ///
 /// It is a logic error for a key to be modified in such a way that the
 /// item's ordering relative to any other item, as determined by the `Ord`

@@ -1,6 +1,7 @@
 # radix-heap
 
 [![Build Status](https://travis-ci.org/Noctune/radix-heap.svg?branch=master)](https://travis-ci.org/Noctune/radix-heap)
+[![Documentation](https://docs.rs/radix-heap/badge.svg)](https://docs.rs/radix-heap)
 
 Fast monotone priority queues.
 
