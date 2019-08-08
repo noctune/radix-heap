@@ -43,7 +43,6 @@ use std::{
 };
 
 use ieee754::Ieee754;
-use ordered_float::NotNaN;
 
 #[derive(Clone)]
 struct Bucket<K, V> {
@@ -569,10 +568,10 @@ radix_int_impl!(u64);
 radix_int_impl!(usize);
 
 macro_rules! radix_float_impl {
-    ($t:ty) => {
-        impl Radix for NotNaN<$t> {
+    ($t:ty, $wrapper:path) => {
+        impl Radix for $wrapper {
             #[inline]
-            fn radix_similarity(&self, other: &NotNaN<$t>) -> u32 {
+            fn radix_similarity(&self, other: &$wrapper) -> u32 {
                 self.bits().radix_similarity(&other.bits())
             }
 
@@ -581,8 +580,10 @@ macro_rules! radix_float_impl {
     };
 }
 
-radix_float_impl!(f32);
-radix_float_impl!(f64);
+radix_float_impl!(f32, ordered_float::NotNan<f32>);
+radix_float_impl!(f64, ordered_float::NotNan<f64>);
+radix_float_impl!(f32, ordered_float_05::NotNaN<f32>);
+radix_float_impl!(f64, ordered_float_05::NotNaN<f64>);
 
 impl Radix for () {
     #[inline]
@@ -730,7 +731,7 @@ mod tests {
     use self::quickcheck::{quickcheck, TestResult};
     use super::Radix;
     use super::RadixHeapMap;
-    use ordered_float::NotNaN;
+    use ordered_float::NotNan;
     use std::cmp::Reverse;
     use std::f32;
 
@@ -833,7 +834,7 @@ mod tests {
                 return TestResult::discard();
             }
 
-            let mut xs: Vec<_> = xs.into_iter().map(|x| NotNaN::from(x)).collect();
+            let mut xs: Vec<_> = xs.into_iter().map(|x| NotNan::from(x)).collect();
             xs.sort();
 
             let mut heap: RadixHeapMap<_, _> =
