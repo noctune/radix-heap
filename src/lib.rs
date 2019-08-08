@@ -2,10 +2,10 @@
 
 //! A monotone priority queue implemented with a radix heap.
 //!
-//! A monotone priority queue is a variant of priority queues (itself a
-//! generalization of heaps) that requires that the extracted elements follow a
-//! monotonic sequence. This means that you cannot insert an element into a
-//! radix heap that is smaller than the last extracted element.
+//! A monotone priority queue is a variant of priority queues  that requires
+//! that the extracted elements follow a monotonic sequence. This means that,
+//! for a max-radix-heap, you cannot insert an element into a radix heap that
+//! is larger than the last extracted element.
 //!
 //! The key of the last extracted element is called the "top" key of the radix
 //! heap. Thus any value pushed onto the heap must be larger than or equal to
@@ -164,7 +164,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     /// Drop all items from the `RadixHeapMap` and sets the top key to a
     /// specific value.
     ///
-    /// This can be more efficient if you have a known minimum bound of the
+    /// This can be more efficient if you have a known maximum bound of the
     /// items being pushed to the heap.
     pub fn clear_to(&mut self, top: K) {
         self.clear();
@@ -203,7 +203,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     ///
     /// Panics
     /// ------
-    /// Panics if the key is more than the current top key.
+    /// Panics if the key is larger than the current top key.
     #[inline]
     pub fn push(&mut self, key: K, value: V) {
         if let Some(top) = self.top {

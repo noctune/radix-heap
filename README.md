@@ -7,11 +7,11 @@ Fast monotone priority queues.
 
 A monotone priority queue is a variant of priority queues (itself a
 generalization of heaps) that requires that the extracted elements follow a
-monotonic sequence. This means that you cannot insert an element into a
-radix heap that is smaller than the last extracted element.
+monotonic sequence. This means that, for a max-radix-heap, you cannot insert
+an element into a radix heap that is larger than the last extracted element.
 
 The key of the last extracted element is called the "top" key of the radix
-heap. Thus any value pushed onto the heap must be larger than or equal to
+heap. Thus any value pushed onto the heap must be less than or equal to
 the top key.
 
 In return for this restriction, the radix heap does O(1) inserts. Popping an
