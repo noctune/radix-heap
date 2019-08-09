@@ -276,6 +276,15 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         self.top
     }
 
+    /// Returns the greates key in the heap, or `None` if empty.
+    pub fn peek_key(&self) -> Option<K> {
+        self.buckets
+            .iter()
+            .filter_map(|x| x.max.filter(|_| !x.elems.is_empty()))
+            .next()
+            .or(self.initial.max.filter(|_| !self.initial.elems.is_empty()))
+    }
+
     /// Discards as much additional capacity as possible.
     pub fn shrink_to_fit(&mut self) {
         self.initial.shrink_to_fit();
@@ -905,5 +914,20 @@ mod tests {
         let mut vec: Vec<_> = heap.into_iter().collect();
         vec.sort();
         assert_eq!(vec, vec![(1, 2), (5, 4)]);
+    }
+
+    #[test]
+    fn peek() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(1, 2);
+        heap.push(5, 4);
+        heap.push(7, 1);
+
+        assert_eq!(Some(7), heap.peek_key());
+        assert_eq!(Some((7, 1)), heap.pop());
+        assert_eq!(Some(5), heap.peek_key());
+        assert_eq!(Some((5, 4)), heap.pop());
+        assert_eq!(Some(1), heap.peek_key());
+        assert_eq!(Some((1, 2)), heap.pop());
     }
 }
