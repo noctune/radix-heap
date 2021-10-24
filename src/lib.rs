@@ -2,63 +2,11 @@
 #![doc = include_str!("../README.md")]
 
 use std::{
-    cmp::max, cmp::Reverse, default::Default, fmt, iter::FromIterator, iter::FusedIterator,
-    mem::swap, num::Wrapping,
+    cmp::Reverse, default::Default, fmt, iter::FromIterator, iter::FusedIterator, mem::swap,
+    num::Wrapping,
 };
 
-#[derive(Clone)]
-struct Bucket<K, V> {
-    max: Option<K>,
-    elems: Vec<(K, V)>,
-}
-
-impl<K, V> Bucket<K, V> {
-    fn is_empty(&self) -> bool {
-        self.elems.is_empty()
-    }
-
-    fn drain(&mut self) -> std::vec::Drain<(K, V)> {
-        self.max = None;
-        self.elems.drain(..)
-    }
-
-    fn iter(&self) -> std::slice::Iter<(K, V)> {
-        self.elems.iter()
-    }
-
-    fn into_iter(self) -> std::vec::IntoIter<(K, V)> {
-        self.elems.into_iter()
-    }
-
-    fn clear(&mut self) {
-        self.max = None;
-        self.elems.clear();
-    }
-
-    fn shrink_to_fit(&mut self) {
-        self.elems.shrink_to_fit();
-    }
-}
-
-impl<K: Ord + Copy, V> Bucket<K, V> {
-    fn push(&mut self, key: K, value: V) {
-        self.max = max(self.max, Some(key));
-        self.elems.push((key, value));
-    }
-
-    fn pop(&mut self) -> Option<(K, V)> {
-        self.elems.pop()
-    }
-}
-
-impl<K, V> Default for Bucket<K, V> {
-    fn default() -> Bucket<K, V> {
-        Bucket {
-            max: None,
-            elems: Vec::new(),
-        }
-    }
-}
+type Bucket<K, V> = Vec<(K, V)>;
 
 /// A montone priority queue implemented using a radix heap.
 ///
@@ -135,7 +83,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
 
     #[inline]
     fn push_nocheck(&mut self, key: K, value: V, top: K) {
-        self.buckets[key.radix_distance(&top) as usize].push(key, value);
+        self.buckets[key.radix_distance(&top) as usize].push((key, value));
     }
 
     #[inline]
@@ -146,12 +94,18 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         let mut repush = Bucket::default();
 
         swap(bucket(self), &mut repush);
-        let top = repush.max.expect("Expected non-empty bucket");
+
+        let top = *repush
+            .iter()
+            .map(|(k, _)| k)
+            .max()
+            .expect("Expected non-empty bucket");
+
         self.top = Some(top);
 
-        for (k, v) in repush.drain() {
-            self.push_nocheck(k, v, top);
-        }
+        repush
+            .drain(..)
+            .for_each(|(k, v)| self.push_nocheck(k, v, top));
 
         // Swap `repush` back again (purely to save memory allocation,
         // they are both empty at this point but `repush` has some
@@ -172,7 +126,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
             assert!(key <= top, "Key must be lower or equal to current top key");
             self.push_nocheck(key, value, top);
         } else {
-            self.initial.push(key, value);
+            self.initial.push((key, value));
         }
 
         self.len += 1;

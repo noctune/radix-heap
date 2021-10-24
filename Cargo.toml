@@ -10,6 +10,9 @@ repository = "https://github.com/mpdn/radix-heap"
 version = "0.4.0"
 edition = "2018"
 
+[lib]
+bench = false
+
 [[bench]]
 harness = false
 name = "bench"
@@ -23,3 +26,6 @@ criterion = "0.3.5"
 quickcheck = "1.0.3"
 rand_xorshift = "0.3.0"
 rand = "0.8.4"
+
+[package.metadata.docs.rs]
+all-features = true
