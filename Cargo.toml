@@ -16,8 +16,7 @@ name = "bench"
 
 [dependencies]
 ieee754 = "0.2.2"
-ordered-float = "1.0.2"
-ordered-float-05 = { package = "ordered-float", version = "0.5.0" }
+ordered-float = "1.1.1"
 
 [dev-dependencies]
 criterion = "0.2.3"

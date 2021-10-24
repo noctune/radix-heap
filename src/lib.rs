@@ -582,8 +582,6 @@ macro_rules! radix_float_impl {
 
 radix_float_impl!(f32, ordered_float::NotNan<f32>);
 radix_float_impl!(f64, ordered_float::NotNan<f64>);
-radix_float_impl!(f32, ordered_float_05::NotNaN<f32>);
-radix_float_impl!(f64, ordered_float_05::NotNaN<f64>);
 
 impl Radix for () {
     #[inline]
