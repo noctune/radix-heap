@@ -3,15 +3,22 @@ use criterion::{criterion_group, criterion_main};
 use radix_heap::{Radix, RadixHeapMap};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
-use rand_xorshift::XorShiftRng;
 use rand::{Rng, SeedableRng};
+use rand_xorshift::XorShiftRng;
 use std::collections::BinaryHeap;
 
-const SEED: [u8; 16] = [0x5d, 0xb1, 0x2d, 0x42, 0xe9, 0x48, 0xb7, 0x36, 0xf9, 0x66, 0xaf, 0xe1, 0x9a, 0x27, 0x0b, 0x60];
+const SEED: [u8; 16] = [
+    0x5d, 0xb1, 0x2d, 0x42, 0xe9, 0x48, 0xb7, 0x36, 0xf9, 0x66, 0xaf, 0xe1, 0x9a, 0x27, 0x0b, 0x60,
+];
 
-
-fn sort_radix<T: Copy + Ord + Radix>(b: &mut Bencher) where Standard: Distribution<T> {
-    let data: Vec<T> = XorShiftRng::from_seed(SEED).sample_iter(Standard).take(10000).collect();
+fn sort_radix<T: Copy + Ord + Radix>(b: &mut Bencher)
+where
+    Standard: Distribution<T>,
+{
+    let data: Vec<T> = XorShiftRng::from_seed(SEED)
+        .sample_iter(Standard)
+        .take(10000)
+        .collect();
     let mut heap = RadixHeapMap::new();
 
     b.iter(|| {
@@ -25,8 +32,14 @@ fn sort_radix<T: Copy + Ord + Radix>(b: &mut Bencher) where Standard: Distributi
     });
 }
 
-fn sort_binary<T: Copy + Ord + Radix>(b: &mut Bencher) where Standard: Distribution<T> {
-    let data: Vec<T> = XorShiftRng::from_seed(SEED).sample_iter(Standard).take(10000).collect();
+fn sort_binary<T: Copy + Ord + Radix>(b: &mut Bencher)
+where
+    Standard: Distribution<T>,
+{
+    let data: Vec<T> = XorShiftRng::from_seed(SEED)
+        .sample_iter(Standard)
+        .take(10000)
+        .collect();
     let mut heap = BinaryHeap::<T>::new();
 
     b.iter(|| {

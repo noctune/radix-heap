@@ -799,7 +799,10 @@ mod tests {
                 return TestResult::discard();
             }
 
-            let mut xs: Vec<_> = xs.into_iter().map(|x| ordered_float::NotNan::new(x).unwrap()).collect();
+            let mut xs: Vec<_> = xs
+                .into_iter()
+                .map(|x| ordered_float::NotNan::new(x).unwrap())
+                .collect();
             xs.sort();
 
             let mut heap: RadixHeapMap<_, _> =
