@@ -1,4 +1,4 @@
-name: Rust Example
+name: CI
 
 on: [push]
 
@@ -9,4 +9,4 @@ jobs:
       - uses: actions/checkout@v1
       - uses: icepuma/rust-action@1.56.0
         with:
-          args: cargo fmt -- --check && cargo clippy -- -Dwarnings && cargo test
+          args: cargo fmt -- --check && cargo clippy -- -Dwarnings && cargo test --all-features 
