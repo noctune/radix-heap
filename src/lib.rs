@@ -565,6 +565,7 @@ radix_int_impl!(u32);
 radix_int_impl!(u64);
 radix_int_impl!(usize);
 
+#[cfg(feature = "ordered-float")]
 macro_rules! radix_float_impl {
     ($t:ty, $bits:ty, $wrapper:path) => {
         impl Radix for $wrapper {
@@ -580,7 +581,10 @@ macro_rules! radix_float_impl {
     };
 }
 
+#[cfg(feature = "ordered-float")]
 radix_float_impl!(f32, u32, ordered_float::NotNan<f32>);
+
+#[cfg(feature = "ordered-float")]
 radix_float_impl!(f64, u64, ordered_float::NotNan<f64>);
 
 impl Radix for () {
@@ -729,9 +733,7 @@ mod tests {
     use self::quickcheck::{quickcheck, TestResult};
     use super::Radix;
     use super::RadixHeapMap;
-    use ordered_float::NotNan;
     use std::cmp::Reverse;
-    use std::f32;
 
     #[test]
     fn radix_dist() {
@@ -825,6 +827,7 @@ mod tests {
         quickcheck(prop as fn(Vec<(i64, usize)>) -> bool);
     }
 
+    #[cfg(feature = "ordered-float")]
     #[test]
     fn sort_float() {
         fn prop(xs: Vec<f32>) -> TestResult {
@@ -832,7 +835,7 @@ mod tests {
                 return TestResult::discard();
             }
 
-            let mut xs: Vec<_> = xs.into_iter().map(|x| NotNan::from(x)).collect();
+            let mut xs: Vec<_> = xs.into_iter().map(|x| ordered_float::NotNan::new(x).unwrap()).collect();
             xs.sort();
 
             let mut heap: RadixHeapMap<_, _> =
