@@ -2,8 +2,7 @@
 #![doc = include_str!("../README.md")]
 
 use std::{
-    cmp::Reverse, default::Default, fmt, iter::FromIterator, iter::FusedIterator, mem::swap,
-    num::Wrapping,
+    cmp::Reverse, default::Default, fmt, iter::FromIterator, iter::FusedIterator, num::Wrapping,
 };
 
 type Bucket<K, V> = Vec<(K, V)>;
@@ -81,38 +80,42 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         self.top = Some(top);
     }
 
-    #[inline]
-    fn push_nocheck(&mut self, key: K, value: V, top: K) {
-        self.buckets[key.radix_distance(&top) as usize].push((key, value));
-    }
+    /// Sets the top value to the current maximum key value in the heap
+    pub fn constrain(&mut self) {
+        let repush = if self.top.is_some() {
+            let index = self
+                .buckets
+                .iter()
+                .enumerate()
+                .find(|&(_, bucket)| !bucket.is_empty())
+                .map(|(i, _)| i);
 
-    #[inline]
-    fn repush_bucket<F>(&mut self, mut bucket: F)
-    where
-        F: FnMut(&mut Self) -> &mut Bucket<K, V>,
-    {
-        let mut repush = Bucket::default();
+            match index {
+                None | Some(0) => None,
+                Some(index) => {
+                    let (buckets, rest) = self.buckets.split_at_mut(index);
+                    Some((buckets, &mut rest[0]))
+                }
+            }
+        } else if !self.initial.is_empty() {
+            Some((&mut self.buckets[..], &mut self.initial))
+        } else {
+            None
+        };
 
-        swap(bucket(self), &mut repush);
+        if let Some((buckets, repush)) = repush {
+            let top = *repush
+                .iter()
+                .map(|(k, _)| k)
+                .max()
+                .expect("Expected non-empty bucket");
 
-        let top = *repush
-            .iter()
-            .map(|(k, _)| k)
-            .max()
-            .expect("Expected non-empty bucket");
+            self.top = Some(top);
 
-        self.top = Some(top);
-
-        repush
-            .drain(..)
-            .for_each(|(k, v)| self.push_nocheck(k, v, top));
-
-        // Swap `repush` back again (purely to save memory allocation,
-        // they are both empty at this point but `repush` has some
-        // memory allocated)
-        swap(bucket(self), &mut repush);
-
-        debug_assert!(repush.is_empty());
+            repush
+                .drain(..)
+                .for_each(|(k, v)| buckets[k.radix_distance(&top) as usize].push((k, v)));
+        }
     }
 
     /// Pushes a new key value pair onto the heap.
@@ -122,34 +125,15 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     /// Panics if the key is larger than the current top key.
     #[inline]
     pub fn push(&mut self, key: K, value: V) {
-        if let Some(top) = self.top {
+        let bucket = if let Some(top) = self.top {
             assert!(key <= top, "Key must be lower or equal to current top key");
-            self.push_nocheck(key, value, top);
+            &mut self.buckets[key.radix_distance(&top) as usize]
         } else {
-            self.initial.push((key, value));
-        }
+            &mut self.initial
+        };
 
+        bucket.push((key, value));
         self.len += 1;
-    }
-
-    /// Sets the top value to the current maximum key value in the heap
-    pub fn constrain(&mut self) {
-        if self.top.is_some() {
-            let index = self
-                .buckets
-                .iter()
-                .enumerate()
-                .find(|&(_, bucket)| !bucket.is_empty())
-                .map(|(i, _)| i);
-
-            if let Some(index) = index {
-                if index != 0 {
-                    self.repush_bucket(|x| &mut x.buckets[index]);
-                }
-            }
-        } else if !self.initial.is_empty() {
-            self.repush_bucket(|x| &mut x.initial);
-        }
     }
 
     /// Remove the greatest element from the heap and returns it, or `None` if
@@ -161,19 +145,25 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     /// This will set the top key to the extracted key.
     #[inline]
     pub fn pop(&mut self) -> Option<(K, V)> {
-        self.constrain();
+        let mut constrained = false;
 
-        let pop = self
-            .buckets
-            .first_mut()
-            .expect("Expected at least one bucket")
-            .pop();
+        loop {
+            let pop = self
+                .buckets
+                .first_mut()
+                .expect("Expected at least one bucket")
+                .pop();
 
-        if pop.is_some() {
-            self.len -= 1;
+            if pop.is_some() {
+                self.len -= 1;
+                return pop;
+            } else if constrained {
+                return pop;
+            } else {
+                constrained = true;
+                self.constrain()
+            }
         }
-
-        pop
     }
 
     /// Returns the number of elements in the heap
