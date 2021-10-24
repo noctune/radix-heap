@@ -15,7 +15,6 @@ harness = false
 name = "bench"
 
 [dependencies]
-ieee754 = "0.2.2"
 ordered-float = "1.1.1"
 
 [dev-dependencies]

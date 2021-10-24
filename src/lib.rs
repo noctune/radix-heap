@@ -42,8 +42,6 @@ use std::{
     mem::swap, num::Wrapping,
 };
 
-use ieee754::Ieee754;
-
 #[derive(Clone)]
 struct Bucket<K, V> {
     max: Option<K>,
@@ -568,20 +566,22 @@ radix_int_impl!(u64);
 radix_int_impl!(usize);
 
 macro_rules! radix_float_impl {
-    ($t:ty, $wrapper:path) => {
+    ($t:ty, $bits:ty, $wrapper:path) => {
         impl Radix for $wrapper {
             #[inline]
             fn radix_similarity(&self, other: &$wrapper) -> u32 {
-                self.bits().radix_similarity(&other.bits())
+                let self_bits: $bits = self.to_bits();
+                let other_bits: $bits = other.to_bits();
+                self_bits.radix_similarity(&other_bits)
             }
 
-            const RADIX_BITS: u32 = <$t as Ieee754>::Bits::RADIX_BITS;
+            const RADIX_BITS: u32 = <$bits>::RADIX_BITS;
         }
     };
 }
 
-radix_float_impl!(f32, ordered_float::NotNan<f32>);
-radix_float_impl!(f64, ordered_float::NotNan<f64>);
+radix_float_impl!(f32, u32, ordered_float::NotNan<f32>);
+radix_float_impl!(f64, u64, ordered_float::NotNan<f64>);
 
 impl Radix for () {
     #[inline]
