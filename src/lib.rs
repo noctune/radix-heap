@@ -112,9 +112,9 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
 
             self.top = Some(top);
 
-            repush
-                .drain(..)
-                .for_each(|(k, v)| buckets[k.radix_distance(&top) as usize].push((k, v)));
+            repush.drain(..).for_each(|(key, value)| {
+                buckets[key.radix_distance(&top) as usize].push((key, value))
+            });
         }
     }
 
@@ -148,11 +148,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         let mut constrained = false;
 
         loop {
-            let pop = self
-                .buckets
-                .first_mut()
-                .expect("Expected at least one bucket")
-                .pop();
+            let pop = self.buckets[0].pop();
 
             if pop.is_some() {
                 self.len -= 1;
@@ -167,17 +163,19 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
     }
 
     /// Returns the number of elements in the heap
+    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
     /// Returns true if there is no elements in the heap
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// The current top value. All keys pushed onto the heap must be smaller
-    /// than this value.
+    /// The current top value. All keys pushed onto the heap must be smaller than this value.
+    #[inline]
     pub fn top(&self) -> Option<K> {
         self.top
     }

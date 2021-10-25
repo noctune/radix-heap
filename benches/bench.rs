@@ -1,105 +1,221 @@
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+use std::io::BufRead;
+
 use criterion::{black_box, Bencher, Criterion};
 use criterion::{criterion_group, criterion_main};
-use radix_heap::{Radix, RadixHeapMap};
-use rand::distributions::Standard;
-use rand::prelude::Distribution;
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
-use std::collections::BinaryHeap;
+use radix_heap::RadixHeapMap;
 
-const SEED: [u8; 16] = [
-    0x5d, 0xb1, 0x2d, 0x42, 0xe9, 0x48, 0xb7, 0x36, 0xf9, 0x66, 0xaf, 0xe1, 0x9a, 0x27, 0x0b, 0x60,
-];
+const MAP: &[u8] = include_bytes!("den203d.map");
 
-fn sort_radix<T: Copy + Ord + Radix>(b: &mut Bencher)
-where
-    Standard: Distribution<T>,
-{
-    let data: Vec<T> = XorShiftRng::from_seed(SEED)
-        .sample_iter(Standard)
-        .take(10000)
-        .collect();
-    let mut heap = RadixHeapMap::new();
+type Pos = (u32, u32);
 
-    b.iter(|| {
-        heap.extend(data.iter().map(|&k| (k, ())));
-
-        while let Some(a) = heap.pop() {
-            black_box(a);
-        }
-
-        heap.clear();
-    });
+struct Bool2D {
+    height: u32,
+    width: u32,
+    values: Vec<bool>,
 }
 
-fn sort_binary<T: Copy + Ord + Radix>(b: &mut Bencher)
-where
-    Standard: Distribution<T>,
-{
-    let data: Vec<T> = XorShiftRng::from_seed(SEED)
-        .sample_iter(Standard)
-        .take(10000)
-        .collect();
-    let mut heap = BinaryHeap::<T>::new();
+impl Bool2D {
+    fn new(height: u32, width: u32) -> Bool2D {
+        Bool2D {
+            height,
+            width,
+            values: vec![false; (height * width) as usize],
+        }
+    }
 
-    b.iter(|| {
-        heap.extend(data.iter());
+    fn parse_map(mut bytes: &[u8]) -> Bool2D {
+        let mut line = String::new();
 
-        while let Some(a) = heap.pop() {
-            black_box(a);
+        bytes.read_line(&mut line).unwrap();
+        assert_eq!(line, "type octile\n");
+        line.clear();
+
+        bytes.read_line(&mut line).unwrap();
+        let mut words = line.split_whitespace();
+        assert_eq!(words.next(), Some("height"));
+        let height: u32 = words.next().unwrap().parse().unwrap();
+        line.clear();
+
+        bytes.read_line(&mut line).unwrap();
+        let mut words = line.split_whitespace();
+        assert_eq!(words.next(), Some("width"));
+        let width: u32 = words.next().unwrap().parse().unwrap();
+        line.clear();
+
+        bytes.read_line(&mut line).unwrap();
+        assert_eq!(line, "map\n");
+        line.clear();
+
+        let mut values = Vec::new();
+        for _ in 0..height {
+            bytes.read_line(&mut line).unwrap();
+            values.extend(line.as_bytes().iter().map(|&x| x == b'.'));
+            line.clear();
         }
 
-        heap.clear();
-    });
+        Bool2D {
+            height,
+            width,
+            values,
+        }
+    }
+
+    fn clear(&mut self) {
+        self.values.fill(false);
+    }
+
+    fn get_mut(&mut self, pos: Pos) -> &mut bool {
+        &mut self.values[(pos.0 * self.height + pos.1) as usize]
+    }
 }
 
-fn pushpop_radix(b: &mut Bencher) {
-    let mut heap = RadixHeapMap::<i32, ()>::new();
+struct AStarEntry {
+    pos: Pos,
+    cost: u32,
+    full_cost: u32,
+}
+
+fn astar<H: HeapMap>(b: &mut Bencher) {
+    let map = Bool2D::parse_map(MAP);
+
+    let from = (40, 75);
+    let to = (20, 10);
+
+    let mut visited = Bool2D::new(map.height, map.width);
+
+    let manhattan =
+        |pos: Pos| (pos.0.max(to.0) - pos.0.min(to.0)) + (pos.1.max(to.1) - pos.1.min(to.1));
+
+    let mut heap = H::new();
 
     b.iter(|| {
-        heap.push(0, ());
+        heap.clear();
+        visited.clear();
 
-        for _ in 0..10000 {
-            let (n, _) = heap.pop().unwrap();
+        heap.push(AStarEntry {
+            pos: from,
+            cost: 0,
+            full_cost: manhattan(from),
+        });
 
-            for i in 0..4 {
-                heap.push(n - i, ());
+        loop {
+            if let Some(AStarEntry { pos, cost, .. }) = heap.pop() {
+                if pos == to {
+                    assert_eq!(black_box(cost), 85);
+                    break;
+                }
+
+                for neighbor in [
+                    (pos.0 + 1, pos.1),
+                    (pos.0, pos.1 + 1),
+                    (pos.0, pos.1 - 1),
+                    (pos.0 - 1, pos.1),
+                ] {
+                    let visited = visited.get_mut(neighbor);
+
+                    if !*visited {
+                        let neighbor_cost = cost + 1;
+                        heap.push(AStarEntry {
+                            pos: neighbor,
+                            cost: neighbor_cost,
+                            full_cost: neighbor_cost + manhattan(neighbor),
+                        });
+                        *visited = true;
+                    }
+                }
+            } else {
+                panic!("no path")
             }
         }
-
-        heap.clear();
     });
 }
 
-fn pushpop_binary(b: &mut Bencher) {
-    let mut heap = BinaryHeap::<i32>::new();
-
-    b.iter(|| {
-        heap.push(0);
-
-        for _ in 0..10000 {
-            let n = heap.pop().unwrap();
-
-            for i in 0..4 {
-                heap.push(n - i);
-            }
-        }
-
-        heap.clear();
-    });
+trait HeapMap {
+    fn new() -> Self;
+    fn clear(&mut self);
+    fn push(&mut self, entry: AStarEntry);
+    fn pop(&mut self) -> Option<AStarEntry>;
 }
+
+impl HeapMap for RadixHeapMap<Reverse<u32>, (Pos, u32)> {
+    #[inline]
+    fn new() -> Self {
+        RadixHeapMap::new()
+    }
+
+    #[inline]
+    fn clear(&mut self) {
+        self.clear()
+    }
+
+    #[inline]
+    fn push(&mut self, entry: AStarEntry) {
+        self.push(Reverse(entry.full_cost), (entry.pos, entry.cost))
+    }
+
+    #[inline]
+    fn pop(&mut self) -> Option<AStarEntry> {
+        self.pop()
+            .map(|(Reverse(full_cost), (pos, cost))| AStarEntry {
+                pos,
+                cost,
+                full_cost,
+            })
+    }
+}
+
+impl HeapMap for BinaryHeap<AStarEntry> {
+    #[inline]
+    fn new() -> Self {
+        BinaryHeap::new()
+    }
+
+    #[inline]
+    fn clear(&mut self) {
+        self.clear();
+    }
+
+    #[inline]
+    fn push(&mut self, entry: AStarEntry) {
+        self.push(entry)
+    }
+
+    #[inline]
+    fn pop(&mut self) -> Option<AStarEntry> {
+        self.pop()
+    }
+}
+impl PartialOrd for AStarEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AStarEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .full_cost
+            .cmp(&self.full_cost)
+            .then_with(|| self.cost.cmp(&other.cost))
+    }
+}
+
+impl PartialEq for AStarEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.full_cost == other.full_cost && self.cost == other.cost
+    }
+}
+
+impl Eq for AStarEntry {}
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("sort_radix 8", sort_radix::<u8>);
-    c.bench_function("sort_radix 16", sort_radix::<u16>);
-    c.bench_function("sort_radix 32", sort_radix::<u32>);
-    c.bench_function("sort_radix 64", sort_radix::<u64>);
-    c.bench_function("sort_binary 8", sort_binary::<u8>);
-    c.bench_function("sort_binary 16", sort_binary::<u16>);
-    c.bench_function("sort_binary 32", sort_binary::<u32>);
-    c.bench_function("sort_binary 64", sort_binary::<u64>);
-    c.bench_function("pushpop_radix", pushpop_radix);
-    c.bench_function("pushpop_binary", pushpop_binary);
+    c.bench_function(
+        "astar_radix",
+        astar::<RadixHeapMap<Reverse<u32>, (Pos, u32)>>,
+    );
+    c.bench_function("astar_binary", astar::<BinaryHeap<AStarEntry>>);
 }
 
 criterion_group!(benches, criterion_benchmark);
