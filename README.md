@@ -11,28 +11,36 @@ pushed onto the heap must be less than or equal to the top key.
 
 In return for this restriction, the radix heap provides two major benefits:
 
-- Inserts are `O(1)` and popping an elemtn is amortized `O(log m)` where m is the difference between
-  a popped key and the top key at the time the element was inserted.
+- Inserts are `O(1)` and popping an elemtn is amortized `O(log m)` where `m` is the difference
+  between a popped key and the top key at the time the element was inserted.
   
   Note that this is independent of the number of elements in the radix heap. This means that for
   workloads where this difference is bounded by a constant, the radix heap has O(1) pop.
 
-- It is trivial to implement a radix heap with first-in-last-out order for equal keys. When
-  implementing pathfinding 
+  In practice this difference between the number of 
+
+- It is trivial to implement first-in-last-out order for equal keys in a radix heap. When
+  implementing pathfinding, this corresponds to "tie-breaking" which can significantly improve
+  performance. This is also possible to implement with a binary heap, but comes for free with a
+  radix heap.
+
+- A radix heap has generally better cache coherence than a binary heap.
 
 # Performance
 
 Here is a summary of the benchmarks from running them on my machine:
 
 ```text
-astar_radix             time:   [2.5387 us 2.5431 us 2.5477 us]
-astar_binary            time:   [24.220 us 24.231 us 24.243 us]
+astar_radix             time:   [2.6594 us 2.6622 us 2.6651 us]
+astar_binary            time:   [5.3698 us 5.3762 us 5.3827 us]
+pushpop_radix           time:   [97.601 us 97.784 us 97.987 us]
+pushpop_binary          time:   [507.28 us 507.44 us 507.60 us]
 ```
 
-The gist of it is that radix heaps are better for smaller keys. The last two
-benchmarks repeatedly push values that are slightly larger than the last popped
-value. The radix heap performs significantly better at this. This use case is
-something that would be common in for example Dijkstra's algorithm.
+`astar` is a benchmark using a map from the
+[2D Pathfinding Banchmarks](https://movingai.com/benchmarks/grids.html).
+
+`pushpop` is a more heap-focused benchmark where values are repeatedly pushed and popped off a heap.
 
 # Example
 
