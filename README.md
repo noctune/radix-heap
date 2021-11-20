@@ -11,7 +11,7 @@ pushed onto the heap must be less than or equal to the top key.
 
 In return for this restriction, the radix heap provides two major benefits:
 
-- Inserts are `O(1)` and popping an elemtn is amortized `O(log m)` where `m` is the difference
+- Inserts are `O(1)` and popping an element is amortized `O(log m)` where `m` is the difference
   between a popped key and the top key at the time the element was inserted.
   
   Note that this is independent of the number of elements in the radix heap. This means that for
