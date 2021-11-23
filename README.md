@@ -17,8 +17,6 @@ In return for this restriction, the radix heap provides two major benefits:
   Note that this is independent of the number of elements in the radix heap. This means that for
   workloads where this difference is bounded by a constant, the radix heap has O(1) pop.
 
-  In practice this difference between the number of 
-
 - It is trivial to implement first-in-last-out order for equal keys in a radix heap. When
   implementing pathfinding, this corresponds to "tie-breaking" which can significantly improve
   performance. This is also possible to implement with a binary heap, but comes for free with a
