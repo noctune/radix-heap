@@ -463,12 +463,14 @@ radix_int_impl!(i8);
 radix_int_impl!(i16);
 radix_int_impl!(i32);
 radix_int_impl!(i64);
+radix_int_impl!(i128);
 radix_int_impl!(isize);
 
 radix_int_impl!(u8);
 radix_int_impl!(u16);
 radix_int_impl!(u32);
 radix_int_impl!(u64);
+radix_int_impl!(u128);
 radix_int_impl!(usize);
 
 #[cfg(feature = "ordered-float")]
@@ -731,6 +733,8 @@ mod tests {
         quickcheck(prop as fn(Vec<u8>) -> bool);
         quickcheck(prop as fn(Vec<i16>) -> bool);
         quickcheck(prop as fn(Vec<(i64, usize)>) -> bool);
+        quickcheck(prop as fn(Vec<i128>) -> bool);
+        quickcheck(prop as fn(Vec<u128>) -> bool);
     }
 
     #[cfg(feature = "ordered-float")]
