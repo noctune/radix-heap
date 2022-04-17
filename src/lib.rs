@@ -59,7 +59,7 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         }
     }
 
-    /// Drops all items form the `RadixHeapMap` and sets the top key to `None`.
+    /// Drops all items from the `RadixHeapMap` and sets the top key to `None`.
     pub fn clear(&mut self) {
         self.len = 0;
         self.top = None;
