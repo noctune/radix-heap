@@ -174,6 +174,7 @@ impl AStarHeap for RadixHeapMap<Reverse<u32>, (Pos, u32)> {
     #[inline]
     fn push(&mut self, entry: AStarEntry) {
         self.push(Reverse(entry.full_cost), (entry.pos, entry.cost))
+            .unwrap()
     }
 
     #[inline]
@@ -213,13 +214,13 @@ fn pushpop_radix(b: &mut Bencher) {
     let mut heap = RadixHeapMap::<i32, ()>::new();
 
     b.iter(|| {
-        heap.push(0, ());
+        heap.push(0, ()).unwrap();
 
         for _ in 0..10000 {
             let (n, _) = heap.pop().unwrap();
 
             for i in 0..4 {
-                heap.push(n - i, ());
+                heap.push(n - i, ()).unwrap();
             }
         }
 
