@@ -43,12 +43,11 @@ pushpop_binary          time:   [507.28 us 507.44 us 507.60 us]
 # Example
 
 ```
-extern crate radix_heap;
 let mut heap = radix_heap::RadixHeapMap::new();
 
-heap.push(7, 'a');
-heap.push(2, 'b');
-heap.push(9, 'c');
+heap.push(7, 'a').unwrap();
+heap.push(2, 'b').unwrap();
+heap.push(9, 'c').unwrap();
 
 assert!(heap.top() == None);
 assert!(heap.pop() == Some((9, 'c')));

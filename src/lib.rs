@@ -2,7 +2,12 @@
 #![doc = include_str!("../README.md")]
 
 use std::{
-    cmp::Reverse, default::Default, fmt, iter::FromIterator, iter::FusedIterator, num::Wrapping,
+    cmp::Reverse,
+    default::Default,
+    fmt::{self, Display},
+    iter::FromIterator,
+    iter::FusedIterator,
+    num::Wrapping,
 };
 
 type Bucket<K, V> = Vec<(K, V)>;
@@ -32,6 +37,19 @@ pub struct RadixHeapMap<K, V> {
 
     /// The initial entries before a top key is found.
     initial: Bucket<K, V>,
+}
+
+/// An error type returned by [`RadixHeapMap::push()`] when given a
+/// key greater than the current top key.
+#[derive(Debug, Clone, Copy)]
+pub struct GreaterKeyInserted;
+impl Display for GreaterKeyInserted {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "the inserted key must be lower or equal to current top key"
+        )
+    }
 }
 
 impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
@@ -111,22 +129,23 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
             .for_each(|(key, value)| buckets[key.radix_distance(&top) as usize].push((key, value)));
     }
 
-    /// Pushes a new key value pair onto the heap.
-    ///
-    /// Panics
-    /// ------
-    /// Panics if the key is larger than the current top key.
+    /// Attempts to push a new key value pair onto the heap. Fails if
+    /// the inserted key is greater that the current top key.
     #[inline]
-    pub fn push(&mut self, key: K, value: V) {
-        let bucket = if let Some(top) = self.top {
-            assert!(key <= top, "Key must be lower or equal to current top key");
-            &mut self.buckets[key.radix_distance(&top) as usize]
+    pub fn push(&mut self, key: K, value: V) -> Result<(), GreaterKeyInserted> {
+        if let Some(top) = self.top {
+            if key <= top {
+                self.buckets[key.radix_distance(&top) as usize].push((key, value));
+                self.len += 1;
+                Ok(())
+            } else {
+                Err(GreaterKeyInserted)
+            }
         } else {
-            &mut self.initial
-        };
-
-        bucket.push((key, value));
-        self.len += 1;
+            self.initial.push((key, value));
+            self.len += 1;
+            Ok(())
+        }
     }
 
     /// Remove the greatest element from the heap and returns it, or `None` if
@@ -211,7 +230,7 @@ impl<K: Radix + Ord + Copy, V> FromIterator<(K, V)> for RadixHeapMap<K, V> {
         let mut heap = RadixHeapMap::new();
 
         for (k, v) in iter {
-            heap.push(k, v);
+            heap.push(k, v).unwrap();
         }
 
         heap
@@ -224,7 +243,7 @@ impl<K: Radix + Ord + Copy, V> Extend<(K, V)> for RadixHeapMap<K, V> {
         I: IntoIterator<Item = (K, V)>,
     {
         for (k, v) in iter {
-            self.push(k, v);
+            self.push(k, v).unwrap();
         }
     }
 }
@@ -235,7 +254,7 @@ impl<'a, K: Radix + Ord + Copy + 'a, V: Copy + 'a> Extend<&'a (K, V)> for RadixH
         I: IntoIterator<Item = &'a (K, V)>,
     {
         for &(k, v) in iter {
-            self.push(k, v);
+            self.push(k, v).unwrap();
         }
     }
 }
@@ -643,7 +662,7 @@ mod tests {
     #[test]
     fn clear() {
         let mut heap = RadixHeapMap::new();
-        heap.push(0u32, 'a');
+        heap.push(0u32, 'a').unwrap();
         heap.clear();
         assert!(heap.pop().is_none());
     }
@@ -651,9 +670,9 @@ mod tests {
     #[test]
     fn push_pop() {
         let mut heap = RadixHeapMap::new();
-        heap.push(0u32, 'a');
-        heap.push(3, 'b');
-        heap.push(2, 'c');
+        heap.push(0u32, 'a').unwrap();
+        heap.push(3, 'b').unwrap();
+        heap.push(2, 'c').unwrap();
 
         assert!(heap.len() == 3);
         assert!(!heap.is_empty());
@@ -670,9 +689,9 @@ mod tests {
     #[test]
     fn rev_push_pop() {
         let mut heap = RadixHeapMap::new();
-        heap.push(Reverse(0), 'a');
-        heap.push(Reverse(3), 'b');
-        heap.push(Reverse(2), 'c');
+        heap.push(Reverse(0), 'a').unwrap();
+        heap.push(Reverse(3), 'b').unwrap();
+        heap.push(Reverse(2), 'c').unwrap();
 
         assert!(heap.len() == 3);
         assert!(!heap.is_empty());
@@ -690,11 +709,11 @@ mod tests {
     #[should_panic]
     fn push_pop_panic() {
         let mut heap = RadixHeapMap::new();
-        heap.push(0u32, 'a');
-        heap.push(3, 'b');
+        heap.push(0u32, 'a').unwrap();
+        heap.push(3, 'b').unwrap();
 
         assert!(heap.pop() == Some((3, 'b')));
-        heap.push(4, 'd');
+        heap.push(4, 'd').unwrap();
     }
 
     #[test]
@@ -787,8 +806,8 @@ mod tests {
     #[test]
     fn into_iter_inital() {
         let mut heap = RadixHeapMap::new();
-        heap.push(1, 2);
-        heap.push(5, 2);
+        heap.push(1, 2).unwrap();
+        heap.push(5, 2).unwrap();
 
         let mut vec: Vec<_> = heap.into_iter().collect();
         vec.sort();
@@ -798,9 +817,9 @@ mod tests {
     #[test]
     fn into_iter() {
         let mut heap = RadixHeapMap::new();
-        heap.push(1, 2);
-        heap.push(5, 4);
-        heap.push(7, 1);
+        heap.push(1, 2).unwrap();
+        heap.push(5, 4).unwrap();
+        heap.push(7, 1).unwrap();
 
         assert_eq!(Some((7, 1)), heap.pop());
 
