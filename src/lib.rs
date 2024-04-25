@@ -150,6 +150,19 @@ impl<K: Radix + Ord + Copy, V> RadixHeapMap<K, V> {
         ret
     }
 
+    /// Return the greatest element from the heap without removing it, or `None` if
+    /// empty.
+    ///
+    /// If there is a tie between multiple elements, the last inserted element
+    /// will be peeked first.
+    #[inline]
+    pub fn peek(&mut self) -> Option<&(K, V)> {
+        if self.buckets[0].is_empty() {
+            self.constrain();
+        }
+        self.buckets[0].last()
+    }
+
     /// Returns the number of elements in the heap
     #[inline]
     pub fn len(&self) -> usize {
@@ -807,5 +820,23 @@ mod tests {
         let mut vec: Vec<_> = heap.into_iter().collect();
         vec.sort();
         assert_eq!(vec, vec![(1, 2), (5, 4)]);
+    }
+
+    #[test]
+    fn peek() {
+        let mut heap = RadixHeapMap::new();
+        heap.push(1, 2);
+        heap.push(5, 4);
+        heap.push(7, 1);
+
+        assert_eq!(Some(&(7, 1)), heap.peek());
+        assert_eq!(Some(&(7, 1)), heap.peek());
+        assert_eq!(Some((7, 1)), heap.pop());
+        assert_eq!(Some(&(5, 4)), heap.peek());
+        assert_eq!(Some((5, 4)), heap.pop());
+        assert_eq!(Some(&(1, 2)), heap.peek());
+        assert_eq!(Some((1, 2)), heap.pop());
+        assert_eq!(None, heap.peek());
+        assert_eq!(None, heap.pop());
     }
 }
